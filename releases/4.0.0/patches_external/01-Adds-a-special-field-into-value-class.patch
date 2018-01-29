@@ -1,0 +1,59 @@
+#    Description                  : Adds a special field into llvm::Value class,
+#                                   so it could be used for 'table' based mapping of Value attributes
+#    When Fixed in Open Source    : Need Always 
+#    P4V CL                       : 557956(3.8.0), 642680(4.0.0)
+#    Category                     : Enhanchement
+#    Author                       : ktrifuno
+#    Open Source Classification   : Internal Only
+#    Impact                       : Compile Time
+#    Failing Workload/Commandline :
+#    Notes                        : Change to improve compilation time, not needed for functionality
+#                                   or runtime performance. Might try to convince LLVM community to 
+#                                   add this field, but it would rather be rejected, since it has no 
+#                                   use besides IGC. LLVM guys are using the LLVM Table Gen 
+#                                   intermediate representation for carrying on the codegen tasks, 
+#                                   thus no need for ID.
+
+diff -Naur --strip-trailing-cr a/include/llvm/IR/Value.h b/include/llvm/IR/Value.h
+--- a/include/llvm/IR/Value.h	2017-10-23 09:53:04.880214746 -0400
++++ b/include/llvm/IR/Value.h	2017-10-23 12:47:32.456804658 -0400
+@@ -116,6 +116,17 @@
+   unsigned HasHungOffUses : 1;
+   unsigned HasDescriptor : 1;
+ 
++  /// INTEL specific extension
++  unsigned int ID : 32 ;
++  unsigned unused_pack : 32; //added to handle packing
++  
++public:
++  /// INTEL specific extension
++  unsigned int GetID() const { return ID; }
++
++  /// INTEL specific extension
++  void SetID(unsigned int _ID) { ID = _ID; }
++  /// End of Intel specific extension
+ private:
+   template <typename UseT> // UseT == 'Use' or 'const Use'
+   class use_iterator_impl
+diff -Naur --strip-trailing-cr a/lib/IR/Value.cpp b/lib/IR/Value.cpp
+--- a/lib/IR/Value.cpp	2017-10-23 09:53:05.011214741 -0400
++++ b/lib/IR/Value.cpp	2017-10-23 12:47:32.457804658 -0400
+@@ -48,7 +48,8 @@
+ Value::Value(Type *ty, unsigned scid)
+     : VTy(checkType(ty)), UseList(nullptr), SubclassID(scid),
+       HasValueHandle(0), SubclassOptionalData(0), SubclassData(0),
+-      NumUserOperands(0), IsUsedByMD(false), HasName(false) {
++      NumUserOperands(0), IsUsedByMD(false), HasName(false),
++      ID(std::numeric_limits<unsigned int>::max()){
+   // FIXME: Why isn't this in the subclass gunk??
+   // Note, we cannot call isa<CallInst> before the CallInst has been
+   // constructed.
+@@ -59,7 +60,7 @@
+            (SubclassID < ConstantFirstVal || SubclassID > ConstantLastVal))
+     assert((VTy->isFirstClassType() || VTy->isVoidTy()) &&
+            "Cannot create non-first-class values except for constants!");
+-  static_assert(sizeof(Value) == 3 * sizeof(void *) + 2 * sizeof(unsigned),
++  static_assert(sizeof(Value) == 3 * sizeof(void *) + 4 * sizeof(unsigned),
+                 "Value too big");
+ }
+ 
