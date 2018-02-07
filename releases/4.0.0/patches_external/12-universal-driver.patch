@@ -1,0 +1,35 @@
+#    Description                  : Universal Driver Enabling
+#    When Fixed in Open Source    : Needed always
+#    P4V CL                       : 706504(4.0.0)
+#    Category                     : Build
+#    Author                       : juanrod2
+#    Open Source Classification   : Internal Only
+#    Impact                       : 
+#    Failing Workload/Commandline : 
+#    Notes                        : Process::GetArgumentVector for Windows has been 
+#                                   commented out since it is calling CommandLineToArgvW 
+#                                   which is not Universal API compliant.
+
+diff -Naur --strip-trailing-cr a/lib/Support/Windows/Process.inc b/lib/Support/Windows/Process.inc
+--- a/lib/Support/Windows/Process.inc	2017-10-27 09:51:01.756680018 -0400
++++ b/lib/Support/Windows/Process.inc	2017-10-27 09:51:43.873678368 -0400
+@@ -232,7 +232,10 @@
+   LongPath.set_size(Length);
+   return ConvertAndPushArg(LongPath.data(), Args, Allocator);
+ }
+-
++//INTEL_INTERNAL START
++//Disabling this function as it has a conflict with Windows Universal API
++//CommandLineToArgvW is the windows call causing the conflict.
++#if 0
+ std::error_code
+ Process::GetArgumentVector(SmallVectorImpl<const char *> &Args,
+                            ArrayRef<const char *>,
+@@ -267,6 +270,7 @@
+   LocalFree(UnicodeCommandLine);
+   return ec;
+ }
++#endif
+ 
+ std::error_code Process::FixupStandardFileDescriptors() {
+   return std::error_code();

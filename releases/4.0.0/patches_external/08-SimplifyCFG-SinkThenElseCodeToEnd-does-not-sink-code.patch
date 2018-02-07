@@ -1,0 +1,211 @@
+#    Description                  : SimplifyCFG::SinkThenElseCodeToEnd does not sink code similiar 
+#                                   to LLVM 3.8 
+#    When Fixed in Open Source    : Needed until we have resolved gen intrinsic handling with 
+#                                   LLVM 4.0 and resolved code sinking.
+#    P4V CL                       : 688188(4.0.0)
+#    Category                     : Optimization
+#    Author                       : pmistry
+#    Open Source Classification   : Internal Only
+#    Impact                       : Performance/Functional
+#    Failing Workload/Commandline : Ashes of Singularity Escalation.dx12-g1
+#    Notes                        : SimplifyCFG::SinkThenElseCodeToEnd does not sink code similiar to 
+#                                   LLVM 3.8 in certain cases. In case of GenIntrinsics it sinks and the 
+#                                   same is not handled properly by IGC passes later on. Benchmark that 
+#                                   exposed the issue was Ashes of Singularity Escalation.dx12-g1
+
+diff -Naur --strip-trailing-cr a/lib/Transforms/Utils/SimplifyCFG.cpp b/lib/Transforms/Utils/SimplifyCFG.cpp
+--- a/lib/Transforms/Utils/SimplifyCFG.cpp	2017-10-23 09:53:04.934214744 -0400
++++ b/lib/Transforms/Utils/SimplifyCFG.cpp	2017-10-23 13:44:20.401671146 -0400
+@@ -1835,6 +1835,183 @@
+   return Changed;
+ }
+ 
++/// Given an unconditional branch that goes to BBEnd,
++/// check whether BBEnd has only two predecessors and the other predecessor
++/// ends with an unconditional branch. If it is true, sink any common code
++/// in the two predecessors to BBEnd.
++static bool SinkThenElseCodeToEnd_LLVM38(BranchInst *BI1) {
++  assert(BI1->isUnconditional());
++  BasicBlock *BB1 = BI1->getParent();
++  BasicBlock *BBEnd = BI1->getSuccessor(0);
++
++  // Check that BBEnd has two predecessors and the other predecessor ends with
++  // an unconditional branch.
++  pred_iterator PI = pred_begin(BBEnd), PE = pred_end(BBEnd);
++  BasicBlock *Pred0 = *PI++;
++  if (PI == PE) // Only one predecessor.
++    return false;
++  BasicBlock *Pred1 = *PI++;
++  if (PI != PE) // More than two predecessors.
++    return false;
++  BasicBlock *BB2 = (Pred0 == BB1) ? Pred1 : Pred0;
++  BranchInst *BI2 = dyn_cast<BranchInst>(BB2->getTerminator());
++  if (!BI2 || !BI2->isUnconditional())
++    return false;
++
++  // Gather the PHI nodes in BBEnd.
++  SmallDenseMap<std::pair<Value *, Value *>, PHINode *> JointValueMap;
++  Instruction *FirstNonPhiInBBEnd = nullptr;
++  for (BasicBlock::iterator I = BBEnd->begin(), E = BBEnd->end(); I != E; ++I) {
++    if (PHINode *PN = dyn_cast<PHINode>(I)) {
++      Value *BB1V = PN->getIncomingValueForBlock(BB1);
++      Value *BB2V = PN->getIncomingValueForBlock(BB2);
++      JointValueMap[std::make_pair(BB1V, BB2V)] = PN;
++    } else {
++      FirstNonPhiInBBEnd = &*I;
++      break;
++    }
++  }
++  if (!FirstNonPhiInBBEnd)
++    return false;
++
++  // This does very trivial matching, with limited scanning, to find identical
++  // instructions in the two blocks.  We scan backward for obviously identical
++  // instructions in an identical order.
++  BasicBlock::InstListType::reverse_iterator RI1 = BB1->getInstList().rbegin(),
++                                             RE1 = BB1->getInstList().rend(),
++                                             RI2 = BB2->getInstList().rbegin(),
++                                             RE2 = BB2->getInstList().rend();
++  // Skip debug info.
++  while (RI1 != RE1 && isa<DbgInfoIntrinsic>(&*RI1)) ++RI1;
++  if (RI1 == RE1)
++    return false;
++  while (RI2 != RE2 && isa<DbgInfoIntrinsic>(&*RI2)) ++RI2;
++  if (RI2 == RE2)
++    return false;
++  // Skip the unconditional branches.
++  ++RI1;
++  ++RI2;
++
++  bool Changed = false;
++  while (RI1 != RE1 && RI2 != RE2) {
++    // Skip debug info.
++    while (RI1 != RE1 && isa<DbgInfoIntrinsic>(&*RI1)) ++RI1;
++    if (RI1 == RE1)
++      return Changed;
++    while (RI2 != RE2 && isa<DbgInfoIntrinsic>(&*RI2)) ++RI2;
++    if (RI2 == RE2)
++      return Changed;
++
++    Instruction *I1 = &*RI1, *I2 = &*RI2;
++    auto InstPair = std::make_pair(I1, I2);
++    // I1 and I2 should have a single use in the same PHI node, and they
++    // perform the same operation.
++    // Cannot move control-flow-involving, volatile loads, vaarg, etc.
++    if (isa<PHINode>(I1) || isa<PHINode>(I2) ||
++        isa<TerminatorInst>(I1) || isa<TerminatorInst>(I2) ||
++        I1->isEHPad() || I2->isEHPad() ||
++        isa<AllocaInst>(I1) || isa<AllocaInst>(I2) ||
++        I1->mayHaveSideEffects() || I2->mayHaveSideEffects() ||
++        I1->mayReadOrWriteMemory() || I2->mayReadOrWriteMemory() ||
++        !I1->hasOneUse() || !I2->hasOneUse() ||
++        !JointValueMap.count(InstPair))
++      return Changed;
++
++    // Check whether we should swap the operands of ICmpInst.
++    // TODO: Add support of communativity.
++    ICmpInst *ICmp1 = dyn_cast<ICmpInst>(I1), *ICmp2 = dyn_cast<ICmpInst>(I2);
++    bool SwapOpnds = false;
++    if (ICmp1 && ICmp2 &&
++        ICmp1->getOperand(0) != ICmp2->getOperand(0) &&
++        ICmp1->getOperand(1) != ICmp2->getOperand(1) &&
++        (ICmp1->getOperand(0) == ICmp2->getOperand(1) ||
++         ICmp1->getOperand(1) == ICmp2->getOperand(0))) {
++      ICmp2->swapOperands();
++      SwapOpnds = true;
++    }
++    if (!I1->isSameOperationAs(I2)) {
++      if (SwapOpnds)
++        ICmp2->swapOperands();
++      return Changed;
++    }
++
++    // The operands should be either the same or they need to be generated
++    // with a PHI node after sinking. We only handle the case where there is
++    // a single pair of different operands.
++    Value *DifferentOp1 = nullptr, *DifferentOp2 = nullptr;
++    unsigned Op1Idx = ~0U;
++    for (unsigned I = 0, E = I1->getNumOperands(); I != E; ++I) {
++      if (I1->getOperand(I) == I2->getOperand(I))
++        continue;
++      // Early exit if we have more-than one pair of different operands or if
++      // we need a PHI node to replace a constant.
++      if (Op1Idx != ~0U ||
++          isa<Constant>(I1->getOperand(I)) ||
++          isa<Constant>(I2->getOperand(I))) {
++        // If we can't sink the instructions, undo the swapping.
++        if (SwapOpnds)
++          ICmp2->swapOperands();
++        return Changed;
++      }
++      DifferentOp1 = I1->getOperand(I);
++      Op1Idx = I;
++      DifferentOp2 = I2->getOperand(I);
++    }
++
++    DEBUG(dbgs() << "SINK common instructions " << *I1 << "\n");
++    DEBUG(dbgs() << "                         " << *I2 << "\n");
++
++    // We insert the pair of different operands to JointValueMap and
++    // remove (I1, I2) from JointValueMap.
++    if (Op1Idx != ~0U) {
++      auto &NewPN = JointValueMap[std::make_pair(DifferentOp1, DifferentOp2)];
++      if (!NewPN) {
++        NewPN =
++            PHINode::Create(DifferentOp1->getType(), 2,
++                            DifferentOp1->getName() + ".sink", &BBEnd->front());
++        NewPN->addIncoming(DifferentOp1, BB1);
++        NewPN->addIncoming(DifferentOp2, BB2);
++        DEBUG(dbgs() << "Create PHI node " << *NewPN << "\n";);
++      }
++      // I1 should use NewPN instead of DifferentOp1.
++      I1->setOperand(Op1Idx, NewPN);
++    }
++    PHINode *OldPN = JointValueMap[InstPair];
++    JointValueMap.erase(InstPair);
++
++    // We need to update RE1 and RE2 if we are going to sink the first
++    // instruction in the basic block down.
++    bool UpdateRE1 = (I1 == &*BB1->begin()), UpdateRE2 = (I2 == &*BB2->begin());
++    // Sink the instruction.
++    BBEnd->getInstList().splice(FirstNonPhiInBBEnd->getIterator(),
++                                BB1->getInstList(), I1);
++    if (!OldPN->use_empty())
++      OldPN->replaceAllUsesWith(I1);
++    OldPN->eraseFromParent();
++
++    if (!I2->use_empty())
++      I2->replaceAllUsesWith(I1);
++    I1->andIRFlags(I2);
++    // TODO: Use combineMetadata here to preserve what metadata we can
++    // (analogous to the hoisting case above).
++    I2->eraseFromParent();
++
++    if (UpdateRE1)
++      RE1 = BB1->getInstList().rend();
++    if (UpdateRE2)
++      RE2 = BB2->getInstList().rend();
++    FirstNonPhiInBBEnd = &*I1;
++    NumSinkCommons++;
++	RI1 = BB1->getInstList().rbegin(),
++	RI2 = BB2->getInstList().rbegin(),
++	++RI1;
++	++RI2;
++
++    Changed = true;
++  }
++  return Changed;
++}
++
+ /// \brief Determine if we can hoist sink a sole store instruction out of a
+ /// conditional block.
+ ///
+@@ -5681,7 +5858,7 @@
+                                           IRBuilder<> &Builder) {
+   BasicBlock *BB = BI->getParent();
+ 
+-  if (SinkCommon && SinkThenElseCodeToEnd(BI))
++  if (SinkCommon && SinkThenElseCodeToEnd_LLVM38(BI))
+     return true;
+ 
+   // If the Terminator is the only non-phi instruction, simplify the block.

@@ -1,0 +1,137 @@
+#    Description                  : Be conservative when splitting loop
+#    When Fixed in Open Source    : Need Always
+#    P4V CL                       : 603927(3.8.0), 642695,653096,699503(4.0.0)
+#    Category                     : 
+#    Author                       : hliao
+#    Open Source Classification   : Internal Only
+#    Impact                       : 
+#    Failing Workload/Commandline :
+#    Notes                        : 
+
+diff -Naur --strip-trailing-cr a/lib/Transforms/Utils/LoopSimplify.cpp b/lib/Transforms/Utils/LoopSimplify.cpp
+--- a/lib/Transforms/Utils/LoopSimplify.cpp	2017-10-23 09:53:04.933214744 -0400
++++ b/lib/Transforms/Utils/LoopSimplify.cpp	2017-10-23 13:13:03.698744669 -0400
+@@ -202,27 +202,67 @@
+   } while (!Worklist.empty());
+ }
+ 
++/// \brief Simplify PHI nodes in loop header.
++static bool simplifyLoopPHIs(Loop *L, const DataLayout &DL,
++                             DominatorTree *DT, ScalarEvolution *SE,
++                             AssumptionCache *AC) {
++  bool Changed = false;
++
++  // Scan over the PHI nodes in the loop header and try to simplify PHI nodes.
++  PHINode *PN;
++  for (BasicBlock::iterator I = L->getHeader()->begin();
++       (PN = dyn_cast<PHINode>(I++));/* EMPTY */)
++    if (Value *V = SimplifyInstruction(PN, DL, nullptr, DT, AC)) {
++      if (SE) SE->forgetValue(PN);
++      PN->replaceAllUsesWith(V);
++      PN->eraseFromParent();
++      Changed = true;
++    }
++
++  return Changed;
++}
++
+ /// \brief The first part of loop-nestification is to find a PHI node that tells
+ /// us how to partition the loops.
+ static PHINode *findPHIToPartitionLoops(Loop *L, DominatorTree *DT,
++                                        ScalarEvolution *SE,
+                                         AssumptionCache *AC) {
+   const DataLayout &DL = L->getHeader()->getModule()->getDataLayout();
+-  for (BasicBlock::iterator I = L->getHeader()->begin(); isa<PHINode>(I); ) {
++  for (BasicBlock::iterator I = L->getHeader()->begin(); isa<PHINode>(I); ++I) {
+     PHINode *PN = cast<PHINode>(I);
+-    ++I;
+-    if (Value *V = SimplifyInstruction(PN, DL, nullptr, DT, AC)) {
+-      // This is a degenerate PHI already, don't modify it!
+-      PN->replaceAllUsesWith(V);
+-      PN->eraseFromParent();
+-      continue;
+-    }
+ 
++    // Skip non induction variable candidates.
++#if 0
++    if (SE && !SE->isSCEVable(PN->getType()))
++      continue;
++#else
++    //If SCEV is not available, skip floating types directly.
++    if (PN->getType()->isFloatingPointTy())
++      continue;
++#endif
+     // Scan this PHI node looking for a use of the PHI node by itself.
+     for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i)
+       if (PN->getIncomingValue(i) == PN &&
+-          L->contains(PN->getIncomingBlock(i)))
++          L->contains(PN->getIncomingBlock(i))) {
++        // To be conservative when splitting a loop. Only do that when it's
++        // quite confident it's a loop nesting.
++        // TODO: Add missing post-dominance checking.
++        bool Found = true;
++        auto InnerLatch = PN->getIncomingBlock(i);
++        for (unsigned j = 0, f = PN->getNumIncomingValues(); j != f; ++j) {
++          if (j == i || PN->getIncomingValue(j) == PN)
++            continue;
++          auto OuterLatch = PN->getIncomingBlock(j);
++          if (!L->contains(OuterLatch))
++            continue;
++          if (DT->dominates(InnerLatch, OuterLatch))
++            continue;
++          Found = false;
++        }
+         // We found something tasty to remove.
+-        return PN;
++        if (Found)
++          return PN;
++      }
+   }
+   return nullptr;
+ }
+@@ -258,7 +298,7 @@
+   BasicBlock *Header = L->getHeader();
+   assert(!Header->isEHPad() && "Can't insert backedge to EH pad");
+ 
+-  PHINode *PN = findPHIToPartitionLoops(L, DT, AC);
++  PHINode *PN = findPHIToPartitionLoops(L, DT, SE, AC);
+   if (!PN) return nullptr;  // No known way to partition.
+ 
+   // Pull out all predecessors that have varying values in the loop.  This
+@@ -587,10 +627,13 @@
+     }
+   }
+ 
++  const DataLayout &DL = L->getHeader()->getModule()->getDataLayout();
++
+   // If the header has more than two predecessors at this point (from the
+   // preheader and from multiple backedges), we must adjust the loop.
+   BasicBlock *LoopLatch = L->getLoopLatch();
+   if (!LoopLatch) {
++    Changed |= simplifyLoopPHIs(L, DL, DT, SE, AC);
+     // If this is really a nested loop, rip it out into a child loop.  Don't do
+     // this for loops with a giant number of backedges, just factor them into a
+     // common backedge instead.
+@@ -620,21 +663,10 @@
+     }
+   }
+ 
+-  const DataLayout &DL = L->getHeader()->getModule()->getDataLayout();
+-
+   // Scan over the PHI nodes in the loop header.  Since they now have only two
+   // incoming values (the loop is canonicalized), we may have simplified the PHI
+   // down to 'X = phi [X, Y]', which should be replaced with 'Y'.
+-  PHINode *PN;
+-  for (BasicBlock::iterator I = L->getHeader()->begin();
+-       (PN = dyn_cast<PHINode>(I++)); )
+-    if (Value *V = SimplifyInstruction(PN, DL, nullptr, DT, AC)) {
+-      if (SE) SE->forgetValue(PN);
+-      if (!PreserveLCSSA || LI->replacementPreservesLCSSAForm(PN, V)) {
+-        PN->replaceAllUsesWith(V);
+-        PN->eraseFromParent();
+-      }
+-    }
++  Changed |= simplifyLoopPHIs(L, DL, DT, SE, AC);
+ 
+   // If this loop has multiple exits and the exits all go to the same
+   // block, attempt to merge the exits. This helps several passes, such

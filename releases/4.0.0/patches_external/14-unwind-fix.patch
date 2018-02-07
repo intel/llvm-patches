@@ -1,0 +1,169 @@
+diff --git a/include/llvm/ExecutionEngine/RTDyldMemoryManager.h b/include/llvm/ExecutionEngine/RTDyldMemoryManager.h
+index 5638717..77bac7e 100644
+--- a/include/llvm/ExecutionEngine/RTDyldMemoryManager.h
++++ b/include/llvm/ExecutionEngine/RTDyldMemoryManager.h
+@@ -64,17 +64,17 @@ public:
+   ~RTDyldMemoryManager() override;
+ 
+   /// Register EH frames in the current process.
+-  static void registerEHFramesInProcess(uint8_t *Addr, size_t Size);
++  static void registerEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr, size_t Size);
+ 
+   /// Deregister EH frames in the current proces.
+-  static void deregisterEHFramesInProcess(uint8_t *Addr, size_t Size);
++  static void deregisterEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,  size_t Size);
+ 
+   void registerEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) override {
+-    registerEHFramesInProcess(Addr, Size);
++    registerEHFramesInProcess(Addr, LoadAddr, Size);
+   }
+ 
+   void deregisterEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) override {
+-    deregisterEHFramesInProcess(Addr, Size);
++    deregisterEHFramesInProcess(Addr, LoadAddr, Size);
+   }
+ 
+   /// This method returns the address of the specified function or variable in
+diff --git a/lib/ExecutionEngine/RuntimeDyld/RTDyldMemoryManager.cpp b/lib/ExecutionEngine/RuntimeDyld/RTDyldMemoryManager.cpp
+index de73fbd..aa222b2 100644
+--- a/lib/ExecutionEngine/RuntimeDyld/RTDyldMemoryManager.cpp
++++ b/lib/ExecutionEngine/RuntimeDyld/RTDyldMemoryManager.cpp
+@@ -28,6 +28,10 @@
+   #include <unistd.h>
+ #endif
+ 
++#ifdef _WIN32
++#include <Windows.h>
++#endif
++
+ namespace llvm {
+ 
+ RTDyldMemoryManager::~RTDyldMemoryManager() {}
+@@ -94,7 +98,7 @@ static const char *processFDE(const char *Entry, bool isDeregister) {
+ // This implementation handles frame registration for local targets.
+ // Memory managers for remote targets should re-implement this function
+ // and use the LoadAddr parameter.
+-void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr,
++void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
+                                                     size_t Size) {
+   // On OS X OS X __register_frame takes a single FDE as an argument.
+   // See http://lists.llvm.org/pipermail/llvm-dev/2013-April/061737.html
+@@ -106,7 +110,7 @@ void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr,
+   } while(P != End);
+ }
+ 
+-void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr,
++void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
+                                                       size_t Size) {
+   const char *P = (const char *)Addr;
+   const char *End = P + Size;
+@@ -115,9 +119,22 @@ void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr,
+   } while(P != End);
+ }
+ 
++#elif defined(_WIN64)
++typedef BOOLEAN(*PFN_RTL_ADD_FUNCTION_TABLE)(PRUNTIME_FUNCTION, DWORD, DWORD64);
++
++void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
++    size_t Size) {
++    PFN_RTL_ADD_FUNCTION_TABLE pfnRtlAddFunctionTable = (PFN_RTL_ADD_FUNCTION_TABLE)GetProcAddress(GetModuleHandle(L"kernel32.dll"), "RtlAddFunctionTable");
++    if (pfnRtlAddFunctionTable) pfnRtlAddFunctionTable((PRUNTIME_FUNCTION)Addr, Size/sizeof(RUNTIME_FUNCTION), LoadAddr);
++}
++
++void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
++    size_t Size) {
++}
++
+ #else
+ 
+-void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr,
++void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
+                                                     size_t Size) {
+   // On Linux __register_frame takes a single argument: 
+   // a pointer to the start of the .eh_frame section.
+@@ -127,7 +144,7 @@ void RTDyldMemoryManager::registerEHFramesInProcess(uint8_t *Addr,
+   __register_frame(Addr);
+ }
+ 
+-void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr,
++void RTDyldMemoryManager::deregisterEHFramesInProcess(uint8_t *Addr, uint64_t LoadAddr,
+                                                       size_t Size) {
+   __deregister_frame(Addr);
+ }
+diff --git a/lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldCOFFX86_64.h b/lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldCOFFX86_64.h
+index 109beb3..c7e176e 100644
+--- a/lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldCOFFX86_64.h
++++ b/lib/ExecutionEngine/RuntimeDyld/Targets/RuntimeDyldCOFFX86_64.h
+@@ -40,6 +40,16 @@ public:
+     return 6; // 2-byte jmp instruction + 32-bit relative address
+   }
+ 
++  // Walks all the sections and returns the section with the lowest address
++  uint64_t getBaseAddress()
++  {
++      uint64_t ImageBase = -1;
++      for (int i = 0, e = Sections.size(); i != e; ++i) {
++          ImageBase = std::min(ImageBase, Sections[i].getLoadAddress());
++      }
++      return ImageBase;
++  }
++
+   // The target location for the relocation is described by RE.SectionID and
+   // RE.Offset.  RE.SectionID can be used to find the SectionEntry.  Each
+   // SectionEntry has three members describing its location.
+@@ -85,14 +95,24 @@ public:
+     }
+ 
+     case COFF::IMAGE_REL_AMD64_ADDR32NB: {
+-      // Note ADDR32NB requires a well-established notion of
+-      // image base. This address must be less than or equal
+-      // to every section's load address, and all sections must be
+-      // within a 32 bit offset from the base.
+-      //
+-      // For now we just set these to zero.
+-      writeBytesUnaligned(0, Target, 4);
+-      break;
++        // Note ADDR32NB requires a well-established notion of
++        // image base. This address must be less than or equal
++        // to every section's load address, and all sections must be
++        // within a 32 bit offset from the base.
++
++        //Finding image load base 
++        uint64_t ImageBase = getBaseAddress();
++
++        //Trying to calculate RVA
++        //TODO: see in the comment above
++        uint64_t Result = 0;
++        if (ImageBase && Value >= ImageBase) {
++            Result = RE.Addend + Value - ImageBase;
++        }
++
++        assert(ImageBase && Value >= ImageBase && "Unable to perform ADDR32NB relocation");
++        writeBytesUnaligned(Result, Target, 4);
++        break;
+     }
+ 
+     case COFF::IMAGE_REL_AMD64_ADDR64: {
+@@ -187,9 +207,11 @@ public:
+   void registerEHFrames() override {
+     for (auto const &EHFrameSID : UnregisteredEHFrameSections) {
+       uint8_t *EHFrameAddr = Sections[EHFrameSID].getAddress();
+-      uint64_t EHFrameLoadAddr = Sections[EHFrameSID].getLoadAddress();
++      //uint64_t EHFrameLoadAddr = Sections[EHFrameSID].getLoadAddress();
++      // Find base address
++      uint64_t ImageBase = getBaseAddress();
+       size_t EHFrameSize = Sections[EHFrameSID].getSize();
+-      MemMgr.registerEHFrames(EHFrameAddr, EHFrameLoadAddr, EHFrameSize);
++      MemMgr.registerEHFrames(EHFrameAddr, ImageBase, EHFrameSize);
+       RegisteredEHFrameSections.push_back(EHFrameSID);
+     }
+     UnregisteredEHFrameSections.clear();
+@@ -207,7 +229,7 @@ public:
+         return errorCodeToError(EC);
+       // Note unwind info is split across .pdata and .xdata, so this
+       // may not be sufficiently general for all users.
+-      if (Name == ".xdata") {
++      if (Name == ".pdata") {
+         UnregisteredEHFrameSections.push_back(SectionPair.second);
+       }
+     }

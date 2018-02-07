@@ -1,0 +1,46 @@
+#    Description                  : [SROA] Fix crash due to bad bitcast
+#    When Fixed in Open Source    : LLVM 5.0.0 - rL304585
+#    P4V CL                       : 706504(4.0.0)
+#    Category                     : Bug
+#    Author                       : gkluczek
+#    Open Source Classification   : Common
+#    Impact                       : Functional
+#    Failing Workload/Commandline : Sandra stress tests when PageFaults are ENABLED
+#    Notes                        : As shown in the test case, SROA was crashing when trying to split
+#                                   stores (to the alloca) of loads (from anywhere), because it assumed
+#                                   the pointer operand to the loads and stores had to have the same
+#                                   address space. This isn't the case. Make sure to use the correct
+#                                   pointer type for both the load and the store.
+
+
+diff -Naur --strip-trailing-cr a/lib/Transforms/Scalar/SROA.cpp b/lib/Transforms/Scalar/SROA.cpp
+--- a/lib/Transforms/Scalar/SROA.cpp	2017-10-23 15:06:46.139477387 -0400
++++ b/lib/Transforms/Scalar/SROA.cpp	2017-10-23 15:06:52.595477134 -0400
+@@ -3692,7 +3692,8 @@
+     int Idx = 0, Size = Offsets.Splits.size();
+     for (;;) {
+       auto *PartTy = Type::getIntNTy(Ty->getContext(), PartSize * 8);
+-      auto *PartPtrTy = PartTy->getPointerTo(SI->getPointerAddressSpace());
++      auto *LoadPartPtrTy = PartTy->getPointerTo(LI->getPointerAddressSpace());
++      auto *StorePartPtrTy = PartTy->getPointerTo(SI->getPointerAddressSpace());
+ 
+       // Either lookup a split load or create one.
+       LoadInst *PLoad;
+@@ -3703,7 +3704,7 @@
+         PLoad = IRB.CreateAlignedLoad(
+             getAdjustedPtr(IRB, DL, LoadBasePtr,
+                            APInt(DL.getPointerSizeInBits(), PartOffset),
+-                           PartPtrTy, LoadBasePtr->getName() + "."),
++                           LoadPartPtrTy, LoadBasePtr->getName() + "."),
+             getAdjustedAlignment(LI, PartOffset, DL), /*IsVolatile*/ false,
+             LI->getName());
+       }
+@@ -3713,7 +3714,7 @@
+       StoreInst *PStore = IRB.CreateAlignedStore(
+           PLoad, getAdjustedPtr(IRB, DL, StoreBasePtr,
+                                 APInt(DL.getPointerSizeInBits(), PartOffset),
+-                                PartPtrTy, StoreBasePtr->getName() + "."),
++                                StorePartPtrTy, StoreBasePtr->getName() + "."),
+           getAdjustedAlignment(SI, PartOffset, DL), /*IsVolatile*/ false);
+ 
+       // Now build a new slice for the alloca.
