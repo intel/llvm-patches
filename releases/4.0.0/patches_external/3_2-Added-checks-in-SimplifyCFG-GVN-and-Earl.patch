@@ -1,17 +1,6 @@
 #    Description                  : Added checks in SimplifyCFG, GVN, and EarlyCSE to prevent hoisting 
 #                                   or sinking convergent functions out of or into control flow (all 
 #                                   wave intrinsics are marked as convergent).
-#    When Fixed in Open Source    : Needed till a cleaner solution is worked out.
-#    P4V CL                       : 696122(4.0.0)
-#    Category                     : Custom
-#    Author                       : djwoo
-#    Open Source Classification   : Common
-#    Impact                       : Functional
-#    Failing Workload/Commandline : TE.exe D3DConf_12_Core.dll /enablewttlogging /appendwttlogging /name:DXILConfTest::WaveIntrinsics*
-#    Notes                        : Need further guidance from the community on whether the convergent 
-#                                   function attribute should cover this case or whether there needs to 
-#                                   be a new mechanism to handle it. The current suggestion of adding 
-#                                   inline asm at every relevant call site is hackish.
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/Scalar/EarlyCSE.cpp b/lib/Transforms/Scalar/EarlyCSE.cpp
 --- a/lib/Transforms/Scalar/EarlyCSE.cpp	2017-10-23 14:47:17.025523189 -0400

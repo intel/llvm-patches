@@ -1,7 +1,4 @@
 #    Description                  : Adds AllowReassoc, AllowContract and ApproxFunc to FastMathFlags
-#    When Fixed in LLVM Core      : 22fddd859bee89a7950cb3dfbeb72cd6072656ee (03/29/2017),  
-#                                 : 00e900afdbd5dc97330de6bc0b8b09db1dcac9f7 (11/06/2017)
-#    Category                     : Enhanchement
 
 diff --git a/docs/LangRef.rst b/docs/LangRef.rst
 --- a/docs/LangRef.rst

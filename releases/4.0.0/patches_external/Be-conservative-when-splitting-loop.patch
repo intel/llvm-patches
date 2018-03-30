@@ -1,12 +1,4 @@
 #    Description                  : Be conservative when splitting loop
-#    When Fixed in Open Source    : Need Always
-#    P4V CL                       : 603927(3.8.0), 642695,653096,699503(4.0.0)
-#    Category                     : 
-#    Author                       : hliao
-#    Open Source Classification   : Internal Only
-#    Impact                       : 
-#    Failing Workload/Commandline :
-#    Notes                        : 
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/Utils/LoopSimplify.cpp b/lib/Transforms/Utils/LoopSimplify.cpp
 --- a/lib/Transforms/Utils/LoopSimplify.cpp	2017-10-23 09:53:04.933214744 -0400

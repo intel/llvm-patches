@@ -1,15 +1,4 @@
 #    Description                  : Limit recursion depth of constant evolving. 
-#    When Fixed in Open Source    : LLVM 5.0.0 - rL291927
-#    P4V CL                       : 700172(4.0.0)
-#    Category                     : Bug
-#    Author                       : juanrod2
-#    Open Source Classification   : Common
-#    Impact                       : Functional
-#    Failing Workload/Commandline : scenario: gta-x, operation: -run:Offset32
-#    Notes                        : Limit recursion depth of constant evolving For a loop body with 
-#                                   VERY complicated exit condition evaluation, constant evolving 
-#                                   may run out of stack on platforms such as Windows. Need to limit
-#                                   the recursion depth.
 
 diff -Naur --strip-trailing-cr a/lib/Analysis/ScalarEvolution.cpp b/lib/Analysis/ScalarEvolution.cpp
 --- a/lib/Analysis/ScalarEvolution.cpp	2017-10-23 09:53:04.925214744 -0400

@@ -1,14 +1,4 @@
 #    Description                  : Universal Driver Enabling
-#    When Fixed in Open Source    : Needed always
-#    P4V CL                       : 706504(4.0.0)
-#    Category                     : Build
-#    Author                       : juanrod2
-#    Open Source Classification   : Internal Only
-#    Impact                       : 
-#    Failing Workload/Commandline : 
-#    Notes                        : Process::GetArgumentVector for Windows has been 
-#                                   commented out since it is calling CommandLineToArgvW 
-#                                   which is not Universal API compliant.
 
 diff -Naur --strip-trailing-cr a/lib/Support/Windows/Process.inc b/lib/Support/Windows/Process.inc
 --- a/lib/Support/Windows/Process.inc	2017-10-27 09:51:01.756680018 -0400

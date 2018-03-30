@@ -1,17 +1,4 @@
 #    Description                  : [SROA] Fix crash due to bad bitcast
-#    When Fixed in Open Source    : LLVM 5.0.0 - rL304585
-#    P4V CL                       : 706504(4.0.0)
-#    Category                     : Bug
-#    Author                       : gkluczek
-#    Open Source Classification   : Common
-#    Impact                       : Functional
-#    Failing Workload/Commandline : Sandra stress tests when PageFaults are ENABLED
-#    Notes                        : As shown in the test case, SROA was crashing when trying to split
-#                                   stores (to the alloca) of loads (from anywhere), because it assumed
-#                                   the pointer operand to the loads and stores had to have the same
-#                                   address space. This isn't the case. Make sure to use the correct
-#                                   pointer type for both the load and the store.
-
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/Scalar/SROA.cpp b/lib/Transforms/Scalar/SROA.cpp
 --- a/lib/Transforms/Scalar/SROA.cpp	2017-10-23 15:06:46.139477387 -0400

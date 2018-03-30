@@ -1,17 +1,5 @@
 #    Description                  : SimplifyCFG::SinkThenElseCodeToEnd does not sink code similiar 
 #                                   to LLVM 3.8 
-#    When Fixed in Open Source    : Needed until we have resolved gen intrinsic handling with 
-#                                   LLVM 4.0 and resolved code sinking.
-#    P4V CL                       : 688188(4.0.0)
-#    Category                     : Optimization
-#    Author                       : pmistry
-#    Open Source Classification   : Internal Only
-#    Impact                       : Performance/Functional
-#    Failing Workload/Commandline : Ashes of Singularity Escalation.dx12-g1
-#    Notes                        : SimplifyCFG::SinkThenElseCodeToEnd does not sink code similiar to 
-#                                   LLVM 3.8 in certain cases. In case of GenIntrinsics it sinks and the 
-#                                   same is not handled properly by IGC passes later on. Benchmark that 
-#                                   exposed the issue was Ashes of Singularity Escalation.dx12-g1
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/Utils/SimplifyCFG.cpp b/lib/Transforms/Utils/SimplifyCFG.cpp
 --- a/lib/Transforms/Utils/SimplifyCFG.cpp	2017-10-23 09:53:04.934214744 -0400

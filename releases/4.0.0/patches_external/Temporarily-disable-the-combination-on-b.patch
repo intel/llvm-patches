@@ -1,10 +1,4 @@
 #    Description                  : Temporarily disable the combination on bitcasts through PHI
-#    When Fixed in Open Source    : Needed till a cleaner solution is worked out.
-#    Category                     : Optimization
-#    Impact                       : Performance
-#    Notes                        : Under certain code pattern, that opt creates lots of redundant 
-#                                   PHI nodes which is hard to eliminated or coalesced and hence 
-#                                   increase register pressure significantly.
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/InstCombine/InstCombineCasts.cpp b/lib/Transforms/InstCombine/InstCombineCasts.cpp
 --- a/lib/Transforms/InstCombine/InstCombineCasts.cpp	2016-12-14 03:57:17.000000000 -0800
