@@ -2,6 +2,7 @@
 #                                   implementation.  However, loop unrolling is safe to igore that 
 #                                   as it won't change dominance significant even that call is duplicated.
 
+
 diff -Naur --strip-trailing-cr a/lib/Transforms/Scalar/LoopUnrollPass.cpp b/lib/Transforms/Scalar/LoopUnrollPass.cpp
 --- a/lib/Transforms/Scalar/LoopUnrollPass.cpp	2017-10-23 09:53:04.937214744 -0400
 +++ b/lib/Transforms/Scalar/LoopUnrollPass.cpp	2017-10-23 12:59:51.244775715 -0400

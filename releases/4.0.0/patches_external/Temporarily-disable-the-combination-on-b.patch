@@ -1,19 +1,19 @@
 #    Description                  : Temporarily disable the combination on bitcasts through PHI
 
+
 diff -Naur --strip-trailing-cr a/lib/Transforms/InstCombine/InstCombineCasts.cpp b/lib/Transforms/InstCombine/InstCombineCasts.cpp
---- a/lib/Transforms/InstCombine/InstCombineCasts.cpp	2016-12-14 03:57:17.000000000 -0800
-+++ b/lib/Transforms/InstCombine/InstCombineCasts.cpp	2018-03-15 17:56:36.824041000 -0700
+--- a/lib/Transforms/InstCombine/InstCombineCasts.cpp	2017-10-23 09:53:04.931214744 -0400
++++ b/lib/Transforms/InstCombine/InstCombineCasts.cpp	2017-10-23 13:38:30.378684858 -0400
 @@ -1886,6 +1886,12 @@
  /// All the related PHI nodes can be replaced by new PHI nodes with type A.
  /// The uses of \p CI can be changed to the new PHI node corresponding to \p PN.
  Instruction *InstCombiner::optimizeBitCastFromPhi(CastInst &CI, PHINode *PN) {
-+ // Temporarily disable optimization of bitcasts through phi as it creates
-+ // significant amount of PHI nodes under certain patterns. As IGC has no
-+ // general register coalescing, these PHI nodes won't be coalesced. It
-+ // results in huge register pressure and slowdown lots of benchmarks
-+ // significantly.
-+ return nullptr;
++  // Temporarily disable optimization of bitcasts through phi as it creates
++  // significant amount of PHI nodes under certain patterns. As IGC has no
++  // general register coalescing, these PHI nodes won't be coalesced. It
++  // results in huge register pressure and slowdown lots of benchmarks
++  // significantly.
++  return nullptr;
    // BitCast used by Store can be handled in InstCombineLoadStoreAlloca.cpp.
    if (hasStoreUsersOnly(CI))
      return nullptr;
-

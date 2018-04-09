@@ -1,5 +1,6 @@
 #    Description                  : Limit recursion depth of constant evolving. 
 
+
 diff -Naur --strip-trailing-cr a/lib/Analysis/ScalarEvolution.cpp b/lib/Analysis/ScalarEvolution.cpp
 --- a/lib/Analysis/ScalarEvolution.cpp	2017-10-23 09:53:04.925214744 -0400
 +++ b/lib/Analysis/ScalarEvolution.cpp	2017-10-23 14:26:57.327570973 -0400

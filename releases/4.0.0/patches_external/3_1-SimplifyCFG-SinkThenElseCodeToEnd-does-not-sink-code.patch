@@ -1,6 +1,7 @@
 #    Description                  : SimplifyCFG::SinkThenElseCodeToEnd does not sink code similiar 
 #                                   to LLVM 3.8 
 
+
 diff -Naur --strip-trailing-cr a/lib/Transforms/Utils/SimplifyCFG.cpp b/lib/Transforms/Utils/SimplifyCFG.cpp
 --- a/lib/Transforms/Utils/SimplifyCFG.cpp	2017-10-23 09:53:04.934214744 -0400
 +++ b/lib/Transforms/Utils/SimplifyCFG.cpp	2017-10-23 13:44:20.401671146 -0400

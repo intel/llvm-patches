@@ -1,5 +1,6 @@
 #    Description                  : Adds AllowReassoc, AllowContract and ApproxFunc to FastMathFlags
 
+
 diff --git a/docs/LangRef.rst b/docs/LangRef.rst
 --- a/docs/LangRef.rst
 +++ b/docs/LangRef.rst

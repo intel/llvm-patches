@@ -1,5 +1,6 @@
 #    Description                  : stripPointerCastsAndOffsets should not process across AddrSpaceCast
 
+
 diff -Naur --strip-trailing-cr a/lib/IR/Value.cpp b/lib/IR/Value.cpp
 --- a/lib/IR/Value.cpp	2016-12-07 13:47:32.000000000 -0800
 +++ b/lib/IR/Value.cpp	2018-03-12 11:25:42.752625100 -0700

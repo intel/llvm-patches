@@ -1,7 +1,5 @@
 #    Description                : completely turn off code-sinking in InstructionCombining.
-#                                 This works around the issue with non-uniform constant-buffer
-#                                 index with an OGL test. The non-uniform buffer indexing is
-#                                 created due to code sinking.
+
 
 diff -Naur --strip-trailing-cr a/lib/Transforms/InstCombine/InstructionCombining.cpp b/lib/Transforms/InstCombine/InstructionCombining.cpp
 --- a/lib/Transforms/InstCombine/InstructionCombining.cpp	2017-10-23 09:48:44.308224955 -0400

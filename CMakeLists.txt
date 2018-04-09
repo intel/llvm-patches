@@ -1,24 +1,28 @@
-#
-#  Copyright (c) 2017, Intel Corporation
+#===================== begin_copyright_notice ==================================
 # 
-#  Permission is hereby granted, free of charge, to any person obtaining a
-#  copy of this software and associated documentation files (the "Software"),
-#  to deal in the Software without restriction, including without limitation
-#  the rights to use, copy, modify, merge, publish, distribute, sublicense,
-#  and/or sell copies of the Software, and to permit persons to whom the
-#  Software is furnished to do so, subject to the following conditions:
+# Copyright (c) 2017-2018 Intel Corporation.
 # 
-#  The above copyright notice and this permission notice shall be included
-#  in all copies or substantial portions of the Software.
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
 # 
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-#  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-#  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-#  OTHER DEALINGS IN THE SOFTWARE.
-#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# 
+# 
+# ======================= end_copyright_notice ==================================
 
 #
 # LLVM libraries
@@ -35,6 +39,7 @@ function(add_dependencies_for_llvm_lib_target llvm_src_dir)
     if(llvm_sub_targets)
         foreach(llvm_target IN LISTS llvm_sub_targets)
             add_dependencies(${LLVM_LIB_NAME} ${llvm_target})
+            set_target_properties(${llvm_target} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
         endforeach()
     endif()
 endfunction()
@@ -42,13 +47,13 @@ endfunction()
 if(BS_USE_OSDM_BUILD_SYSTEM)
     include(${BUILD_SYS_INC}/utils.cmake)
     bs_find_patch()
-    bs_find_python()
+    bs_find_python2()
 else()
     if (NOT PATCH)
         find_program(PATCH NAMES patch patch.exe)
     endif()
     if (NOT PYTHON)
-        find_program(PYTHON NAMES python python.exe)
+        find_program(PYTHON NAMES python2 python python2.exe python.exe)
     endif()
 endif()
 
@@ -153,6 +158,7 @@ if(LLVM_APPLY_PATCHES)
     # Customization patches will be applied if present.
     file(GLOB LLVM_EXTERNAL_PATCH_FILES "${CMAKE_CURRENT_SOURCE_DIR}/releases/4.0.0/patches_external/*.patch")
     list(APPEND LLVM_PATCH_FILES ${LLVM_EXTERNAL_PATCH_FILES})
+    set(LLVM_APPLY_INTERNAL_PATCHES true)
     if(LLVM_APPLY_INTERNAL_PATCHES)
         file(GLOB LLVM_INTERNAL_PATCH_FILES "${CMAKE_CURRENT_SOURCE_DIR}/releases/4.0.0/patches_internal/*.patch")
         list(APPEND LLVM_PATCH_FILES ${LLVM_INTERNAL_PATCH_FILES})
@@ -170,12 +176,9 @@ set(LLVM_DIR           ${LLVM_DIR} PARENT_SCOPE)
 set(LLVM_LIB_NAME      ${LLVM_LIB_NAME} PARENT_SCOPE)
 
 message(STATUS "LLVM_LIB_NAME     = ${LLVM_LIB_NAME}")
-message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
 message(STATUS "LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
 message(STATUS "LLVM_DIR          = ${LLVM_DIR}")
 message(STATUS "LLVM_OPTIONS      = ${LLVM_OPTIONS}")
-
-include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
 if(LLVM_USE_SOURCES_DIRECTLY)  
     set(LLVM_SOURCE_DIR "${CMAKE_BINARY_DIR}/llvm/src")
@@ -205,40 +208,57 @@ if(LLVM_USE_SOURCES_DIRECTLY)
             endif()
         endforeach()
     endif()
-    
-    set(CMAKE_INSTALL_PREFIX ${LLVM_DIR})
-	add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
+
+    if(CMAKE_CONFIGURATION_TYPES)
+        # Multi-configuration generator.
+        set (CMAKE_CONFIGURATION_TYPES "Debug" "Release" "ReleaseInternal")
+        message(STATUS "LLVM_CONFIGURATION_TYPES = ${CMAKE_CONFIGURATION_TYPES}")
+    else()
+        # Single-configuration generator.
+        message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
+    endif()
+
+    add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
     add_custom_target(${LLVM_LIB_NAME} ALL)
+    set_target_properties(${LLVM_LIB_NAME} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
     add_custom_command(TARGET ${LLVM_LIB_NAME}
-                       COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_CONFIG_NAME=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:ReleaseInternal>:ReleaseInternal> -P cmake_install.cmake
+                       COMMAND ${CMAKE_COMMAND}
+                       -DCMAKE_INSTALL_CONFIG_NAME=$<CONFIG>
+                       -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}
+                       -P cmake_install.cmake
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/src)
    add_dependencies_for_llvm_lib_target(${LLVM_SOURCE_DIR})
 else()
-ExternalProject_Add(${LLVM_LIB_NAME}
-    URL ${LLVM_SOURCE_URL}
-    PREFIX src
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/src
-    CMAKE_ARGS -G ${CMAKE_GENERATOR}
-               -DCMAKE_BUILD_TYPE=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:ReleaseInternal>:Release>
-               -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}
-               ${LLVM_OPTIONS}
-    INSTALL_COMMAND DESTDIR= ${CMAKE_COMMAND} --build . --target install
-)
-# Apply customization patches if any.
-set(i 1)
-set(patch_dependee "patch")
-foreach(patch_file ${LLVM_PATCH_FILES})
 
-    ExternalProject_Add_Step(${LLVM_LIB_NAME} "patch${i}"
-            COMMAND ${PATCH} -d "${CMAKE_CURRENT_BINARY_DIR}/src/src/${LLVM_LIB_NAME}" -p1 < ${patch_file}
-            DEPENDEES ${patch_dependee}
-            DEPENDERS configure
-            COMMENT "Apply ${patch_file} file"
-            )
+    message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
 
-    set(patch_dependee "patch${i}")
-    math(EXPR i "${i} + 1")
+    include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
-endforeach()
+    ExternalProject_Add(${LLVM_LIB_NAME}
+        URL ${LLVM_SOURCE_URL}
+        PREFIX src
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/src
+        CMAKE_ARGS -G ${CMAKE_GENERATOR}
+                   -DCMAKE_BUILD_TYPE=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:ReleaseInternal>:Release>
+                   -DCMAKE_INSTALL_PREFIX=${LLVM_DIR}
+                   ${LLVM_OPTIONS}
+        INSTALL_COMMAND DESTDIR= ${CMAKE_COMMAND} --build . --target install
+    )
+    # Apply customization patches if any.
+    set(i 1)
+    set(patch_dependee "patch")
+    foreach(patch_file ${LLVM_PATCH_FILES})
+
+        ExternalProject_Add_Step(${LLVM_LIB_NAME} "patch${i}"
+                COMMAND ${PATCH} -d "${CMAKE_CURRENT_BINARY_DIR}/src/src/${LLVM_LIB_NAME}" -p1 < ${patch_file}
+                DEPENDEES ${patch_dependee}
+                DEPENDERS configure
+                COMMENT "Apply ${patch_file} file"
+                )
+
+        set(patch_dependee "patch${i}")
+        math(EXPR i "${i} + 1")
+
+    endforeach()
 endif()
 

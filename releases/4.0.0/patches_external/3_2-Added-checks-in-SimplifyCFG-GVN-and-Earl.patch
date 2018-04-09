@@ -2,6 +2,7 @@
 #                                   or sinking convergent functions out of or into control flow (all 
 #                                   wave intrinsics are marked as convergent).
 
+
 diff -Naur --strip-trailing-cr a/lib/Transforms/Scalar/EarlyCSE.cpp b/lib/Transforms/Scalar/EarlyCSE.cpp
 --- a/lib/Transforms/Scalar/EarlyCSE.cpp	2017-10-23 14:47:17.025523189 -0400
 +++ b/lib/Transforms/Scalar/EarlyCSE.cpp	2017-10-23 14:48:59.041519192 -0400
