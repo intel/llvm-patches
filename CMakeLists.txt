@@ -141,140 +141,56 @@ endif()
 message(STATUS "LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
 message(STATUS "LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 
-if(NOT LLVM_EXTERNAL_PROJECT_BUILD)
-    if(NOT LLVM_SOURCE_DIR)
-        set(LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src")
-    endif()
-    if(NOT EXISTS ${LLVM_SOURCE_DIR})
-        if(LLVM_SOURCE_USE_TARBALL)
-            # Unpack stock LLVM tarball to LLVM_SOURCE_DIR
-            set(LLVM_UNZIPED_SOURCE_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp")
-            file(MAKE_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
-        
-            message(STATUS "Extracting stock LLVM tarball to ${LLVM_SOURCE_DIR}")
-            execute_process(COMMAND ${CMAKE_COMMAND} -E tar xfz ${LLVM_SOURCE_URL} WORKING_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR} RESULT_VARIABLE rv)
-        
-            if(NOT rv EQUAL 0)
-                message(STATUS "extracting... [error clean up]")
-                file(REMOVE_RECURSE "${LLVM_UNZIPED_SOURCE_TEMP_DIR}")
-                message(FATAL_ERROR "error: extract of '${LLVM_SOURCE_URL}' failed")
-            endif()
-        
-            file(GLOB contents "${LLVM_UNZIPED_SOURCE_TEMP_DIR}/*")
-            file(RENAME ${contents} "${LLVM_SOURCE_DIR}")
-            file(REMOVE_RECURSE ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
-        else()
-            # Copy stock LLVM sources to LLVM_SOURCE_DIR
-            message(STATUS "Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
-            execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
+if(NOT LLVM_SOURCE_DIR)
+    set(LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src")
+endif()
+if(NOT EXISTS ${LLVM_SOURCE_DIR})
+    if(LLVM_SOURCE_USE_TARBALL)
+        # Unpack stock LLVM tarball to LLVM_SOURCE_DIR
+        set(LLVM_UNZIPED_SOURCE_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+        file(MAKE_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
+    
+        message(STATUS "Extracting stock LLVM tarball to ${LLVM_SOURCE_DIR}")
+        execute_process(COMMAND ${CMAKE_COMMAND} -E tar xfz ${LLVM_SOURCE_URL} WORKING_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR} RESULT_VARIABLE rv)
+     
+        if(NOT rv EQUAL 0)
+            message(STATUS "extracting... [error clean up]")
+            file(REMOVE_RECURSE "${LLVM_UNZIPED_SOURCE_TEMP_DIR}")
+            message(FATAL_ERROR "error: extract of '${LLVM_SOURCE_URL}' failed")
         endif()
-        # Apply customization patches if any.
-        foreach(patch_file ${LLVM_PATCH_FILES})
-            message("Apply ${patch_file} file")
-            execute_process(COMMAND ${PATCH} -d ${LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
-            if(NOT rv EQUAL 0)
-                message(FATAL_ERROR "error: appling aptch '${patch_file}' failed")
-            endif()
-        endforeach()
-    endif()
-
-    if(CMAKE_CONFIGURATION_TYPES)
-        # Multi-configuration generator.
-        set (CMAKE_CONFIGURATION_TYPES "Debug" "Release" "ReleaseInternal")
-        message(STATUS "LLVM_CONFIGURATION_TYPES = ${CMAKE_CONFIGURATION_TYPES}")
+      
+        file(GLOB contents "${LLVM_UNZIPED_SOURCE_TEMP_DIR}/*")
+        file(RENAME ${contents} "${LLVM_SOURCE_DIR}")
+        file(REMOVE_RECURSE ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
     else()
-        # Single-configuration generator.
-        message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
+        # Copy stock LLVM sources to LLVM_SOURCE_DIR
+        message(STATUS "Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
     endif()
-
-    # Do not alter LLVM compilation flags
-    llvm_utils_push_build_flags()
-    add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
-    llvm_utils_pop_build_flags()
-
-    set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
-    set(LLVM_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS} PARENT_SCOPE)
-
-else()
-
-    set(LLVM_OPTIONS
-    "-DLLVM_TARGETS_TO_BUILD=''"
-    "-DLLVM_BUILD_TOOLS=true"
-    "-DLLVM_INCLUDE_TOOLS=true"
-    "-DLLVM_INSTALL_UTILS=false"
-    "-DLLVM_INCLUDE_UTILS=false"
-    "-DLLVM_BUILD_EXAMPLES=false"
-    "-DLLVM_INCLUDE_EXAMPLES=false"
-    "-DLLVM_BUILD_TESTS=false"
-    "-DLLVM_INCLUDE_TESTS=false"
-    "-DLLVM_APPEND_VC_REV=false"
-    "-DLLVM_ENABLE_THREADS=true"
-    "-DLLVM_ENABLE_CXX1Y=false"
-    "-DLLVM_ENABLE_PIC=true"
-    "-DLLVM_ENABLE_WARNINGS=true"
-    "-DLLVM_ENABLE_PEDANTIC=true"
-    "-DLLVM_ENABLE_WERROR=false"
-    "-DLLVM_ABI_BREAKING_CHECKS=FORCE_OFF"
-    "-DLLVM_BUILD_RUNTIME=true"
-    "-DLLVM_ENABLE_TERMINFO=false"
-    "-DPYTHON_EXECUTABLE=${PYTHON}"
-    )
-
-    list(APPEND LLVM_OPTIONS
-        "-DLLVM_ENABLE_EH=true"
-        "-DLLVM_ENABLE_RTTI=true"
-    )
-    if ("${ARCH}" STREQUAL "32")
-        list(APPEND LLVM_OPTIONS "-DLLVM_BUILD_32_BITS=true")
-    else()
-        list(APPEND LLVM_OPTIONS "-DLLVM_BUILD_32_BITS=false")
-    endif()
-    if(CMAKE_MAKE_PROGRAM)
-        list(APPEND LLVM_OPTIONS "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")
-    endif()
-
-
-    if(LLVM_CUSTOM_LIB_NAME)
-        set (LLVM_LIB_NAME ${LLVM_CUSTOM_LIB_NAME})
-    else()
-        set (LLVM_LIB_NAME llvm)
-    endif()
-
-    if(NOT LLVM_INSTALL_DIR)
-        set(LLVM_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/install")
-    endif()
-
-    set(LLVM_LIB_NAME ${LLVM_LIB_NAME} PARENT_SCOPE)
-    message(STATUS "LLVM_LIB_NAME     = ${LLVM_LIB_NAME}")
-    message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
-
-    include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
-
-    ExternalProject_Add(${LLVM_LIB_NAME}
-        URL ${LLVM_SOURCE_URL}
-        PREFIX src
-        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/src
-        CMAKE_ARGS -G ${CMAKE_GENERATOR}
-                   -DCMAKE_BUILD_TYPE=$<$<CONFIG:Debug>:Debug>$<$<CONFIG:Release>:Release>$<$<CONFIG:ReleaseInternal>:Release>
-                   -DCMAKE_INSTALL_PREFIX=${LLVM_INSTALL_DIR}
-                   ${LLVM_OPTIONS}
-        INSTALL_COMMAND DESTDIR= ${CMAKE_COMMAND} --build . --target install
-    )
     # Apply customization patches if any.
-    set(i 1)
-    set(patch_dependee "patch")
     foreach(patch_file ${LLVM_PATCH_FILES})
-
-        ExternalProject_Add_Step(${LLVM_LIB_NAME} "patch${i}"
-                COMMAND ${PATCH} -d "${CMAKE_CURRENT_BINARY_DIR}/src/src/${LLVM_LIB_NAME}" -p1 < ${patch_file}
-                DEPENDEES ${patch_dependee}
-                DEPENDERS configure
-                COMMENT "Apply ${patch_file} file"
-                )
-
-        set(patch_dependee "patch${i}")
-        math(EXPR i "${i} + 1")
-
+        message("Apply ${patch_file} file")
+        execute_process(COMMAND ${PATCH} -d ${LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
+        if(NOT rv EQUAL 0)
+            message(FATAL_ERROR "error: appling aptch '${patch_file}' failed")
+        endif()
     endforeach()
 endif()
+
+if(CMAKE_CONFIGURATION_TYPES)
+    # Multi-configuration generator.
+    set (CMAKE_CONFIGURATION_TYPES "Debug" "Release" "ReleaseInternal")
+    message(STATUS "LLVM_CONFIGURATION_TYPES = ${CMAKE_CONFIGURATION_TYPES}")
+else()
+    # Single-configuration generator.
+    message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
+endif()
+
+# Do not alter LLVM compilation flags
+llvm_utils_push_build_flags()
+add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
+llvm_utils_pop_build_flags()
+
+set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
+set(LLVM_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS} PARENT_SCOPE)
 
