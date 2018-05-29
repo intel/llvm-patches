@@ -196,7 +196,7 @@ endif()
 
 # Do not alter LLVM compilation flags
 llvm_utils_push_build_flags()
-add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
+add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src EXCLUDE_FROM_ALL)
 llvm_utils_pop_build_flags()
 
 set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
