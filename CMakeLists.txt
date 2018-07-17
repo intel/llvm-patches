@@ -64,7 +64,7 @@ set(LLVM_ENABLE_WERROR false CACHE BOOL "desc" FORCE)
 set(LLVM_ABI_BREAKING_CHECKS FORCE_OFF CACHE BOOL "desc" FORCE)
 set(LLVM_BUILD_RUNTIME true CACHE BOOL "desc" FORCE)
 set(LLVM_ENABLE_TERMINFO false CACHE BOOL "desc" FORCE)
-set(PYTHON_EXECUTABLE ${PYTHON} CACHE PATH "desc" FORCE)
+
 
 set(LLVM_OPTIONS
     "-DLLVM_TARGETS_TO_BUILD=${LLVM_TARGETS_TO_BUILD}"
@@ -86,8 +86,8 @@ set(LLVM_OPTIONS
     "-DLLVM_ABI_BREAKING_CHECKS=${LLVM_ABI_BREAKING_CHECKS}"
     "-DLLVM_BUILD_RUNTIME=${LLVM_BUILD_RUNTIME}"
     "-DLLVM_ENABLE_TERMINFO=${LLVM_ENABLE_TERMINFO}"
-    "-DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}"
 )
+
 
 if(_ASSERTBUILD)
     set(LLVM_ENABLE_ASSERTIONS true CACHE STRING "desc" FORCE)
@@ -194,10 +194,13 @@ else()
     message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
 endif()
 
+# Set python interpreter for LLVM 
+llvm_utils_python_set()
 # Do not alter LLVM compilation flags
 llvm_utils_push_build_flags()
 add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src EXCLUDE_FROM_ALL)
 llvm_utils_pop_build_flags()
+llvm_utils_python_restore()
 
 set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
 set(LLVM_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS} PARENT_SCOPE)

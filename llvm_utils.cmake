@@ -26,6 +26,35 @@
 
 
 #
+# Macro to set python interpreter for LLVM
+#
+macro(llvm_utils_python_set)
+    # Unset directory scope PYTHON_EXECUTABLE variable
+    unset(PYTHON_EXECUTABLE)
+    # Check for cached PYTHON_EXECUTABLE variable
+    if(PYTHON_EXECUTABLE)
+        # If cached PYTHON_EXECUTABLE already exists save it to restore
+        set(PYTHON_EXECUTABLE_BACKUP ${PYTHON_EXECUTABLE})
+    endif()
+    # Set python interpreter for LLVM
+    set(PYTHON_EXECUTABLE ${PYTHON} CACHE PATH "desc" FORCE)
+    message(STATUS "[LLVM] PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")	
+endmacro()
+
+#
+# Macro to restore python interpreter
+#
+macro(llvm_utils_python_restore)
+    if(PYTHON_EXECUTABLE_BACKUP)
+        # Restore python interpreter
+        set(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE_BACKUP} CACHE PATH "desc" FORCE)
+    else()
+        # Clear python interpreter for LLVM
+        unset(PYTHON_EXECUTABLE CACHE)
+    endif()
+endmacro()
+
+#
 # Macro to clear and backup build flags already set
 #
 macro(llvm_utils_push_build_flags)
