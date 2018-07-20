@@ -123,12 +123,14 @@ else()
     )
 endif()
 
-# Use LLVM sources stored at fixed location
-set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm_source)
 if(NOT EXISTS ${LLVM_SOURCE_URL})
-    # Use tar archive with stock LLVM sources.
-    set(LLVM_SOURCE_USE_TARBALL true)
-    set(LLVM_SOURCE_URL "${BS_DIR_MIGRATION_BINARIES}/igc/llvm/llvm-4.0.0.src.tar.xz")
+    # Use LLVM sources stored at fixed location
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm_source)
+    if(NOT EXISTS ${LLVM_SOURCE_URL})
+        # Use tar archive with stock LLVM sources.
+        set(LLVM_SOURCE_USE_TARBALL true)
+        set(LLVM_SOURCE_URL "${BS_DIR_MIGRATION_BINARIES}/igc/llvm/llvm-4.0.0.src.tar.xz")
+    endif()
 endif()
 
 # Use LLVM stock sources or patched stock sources
