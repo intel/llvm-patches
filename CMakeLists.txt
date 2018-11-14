@@ -123,20 +123,6 @@ else()
     )
 endif()
 
-if(NOT EXISTS ${LLVM_SOURCE_URL})
-    # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm_source)
-endif()
-if(NOT EXISTS ${LLVM_SOURCE_URL})
-    # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm_source)
-endif()
-if(NOT EXISTS ${LLVM_SOURCE_URL})
-    # Use tar archive with stock LLVM sources.
-    set(LLVM_SOURCE_USE_TARBALL true)
-    set(LLVM_SOURCE_URL "${BS_DIR_MIGRATION_BINARIES}/igc/llvm/llvm-4.0.0.src.tar.xz")
-endif()
-
 # Use LLVM stock sources or patched stock sources
 if(LLVM_STOCK_SOURCES)
     set(LLVM_APPLY_PATCHES false)
@@ -144,51 +130,51 @@ else()
     set(LLVM_APPLY_PATCHES true)
 endif()
 
-if(LLVM_APPLY_PATCHES)
-    # Customization patches will be applied if present.
-    file(GLOB LLVM_EXTERNAL_PATCH_FILES "${CMAKE_CURRENT_SOURCE_DIR}/releases/4.0.0/patches_external/*.patch")
-    list(APPEND LLVM_PATCH_FILES ${LLVM_EXTERNAL_PATCH_FILES})
-    # Sort list of patch files.
-    list(SORT LLVM_PATCH_FILES)
+set(EXPECTED_LLVM_VERSION "7.0.0")
+
+if(NOT LLVM_SOURCE_DIR)
+    set(LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src")
+endif()
+
+if(NOT EXISTS ${LLVM_SOURCE_URL})
+    # Use LLVM sources stored at fixed location
+    set(LLVM_SOURCE_URL /opt/src/llvm${EXPECTED_LLVM_VERSION}_source)
+endif()
+if(NOT EXISTS ${LLVM_SOURCE_URL})
+    # Use LLVM sources stored at fixed location
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm${EXPECTED_LLVM_VERSION}_source)
+endif()
+if(NOT EXISTS ${LLVM_SOURCE_URL})
+    # Use LLVM sources stored at fixed location
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm${EXPECTED_LLVM_VERSION}_source)
 endif()
 
 message(STATUS "LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
 message(STATUS "LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 
-if(NOT LLVM_SOURCE_DIR)
-    set(LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src")
-endif()
 if(NOT EXISTS ${LLVM_SOURCE_DIR})
-    if(LLVM_SOURCE_USE_TARBALL)
-        # Unpack stock LLVM tarball to LLVM_SOURCE_DIR
-        set(LLVM_UNZIPED_SOURCE_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/tmp")
-        file(MAKE_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
-    
-        message(STATUS "Extracting stock LLVM tarball to ${LLVM_SOURCE_DIR}")
-        execute_process(COMMAND ${CMAKE_COMMAND} -E tar xfz ${LLVM_SOURCE_URL} WORKING_DIRECTORY ${LLVM_UNZIPED_SOURCE_TEMP_DIR} RESULT_VARIABLE rv)
-     
-        if(NOT rv EQUAL 0)
-            message(STATUS "extracting... [error clean up]")
-            file(REMOVE_RECURSE "${LLVM_UNZIPED_SOURCE_TEMP_DIR}")
-            message(FATAL_ERROR "error: extract of '${LLVM_SOURCE_URL}' failed")
-        endif()
-      
-        file(GLOB contents "${LLVM_UNZIPED_SOURCE_TEMP_DIR}/*")
-        file(RENAME ${contents} "${LLVM_SOURCE_DIR}")
-        file(REMOVE_RECURSE ${LLVM_UNZIPED_SOURCE_TEMP_DIR})
-    else()
-        # Copy stock LLVM sources to LLVM_SOURCE_DIR
-        message(STATUS "Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
-        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
-    endif()
-    # Apply customization patches if any.
-    foreach(patch_file ${LLVM_PATCH_FILES})
-        message("Apply ${patch_file} file")
-        execute_process(COMMAND ${PATCH} -d ${LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
-        if(NOT rv EQUAL 0)
-            message(FATAL_ERROR "error: applying patch '${patch_file}' failed")
-        endif()
-    endforeach()
+      # Copy stock LLVM sources to LLVM_SOURCE_DIR
+      message(STATUS "Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
+
+      if(LLVM_APPLY_PATCHES)
+          # Customization patches will be applied if present.
+          file(GLOB LLVM_PATCH_FILES
+               "${CMAKE_CURRENT_SOURCE_DIR}/releases/${EXPECTED_LLVM_VERSION}/patches_external/*.patch"
+              )
+          # Sort list of patch files.
+          if(LLVM_PATCH_FILES)
+              list(SORT LLVM_PATCH_FILES)
+          endif()
+          # Apply customization patches if any.
+          foreach(patch_file ${LLVM_PATCH_FILES})
+              message("Apply ${patch_file} file")
+              execute_process(COMMAND ${PATCH} -d ${LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
+              if(NOT rv EQUAL 0)
+                  message(FATAL_ERROR "error: applying patch '${patch_file}' failed")
+              endif()
+          endforeach()
+      endif()
 endif()
 
 if(CMAKE_CONFIGURATION_TYPES)
@@ -207,6 +193,22 @@ llvm_utils_push_build_flags()
 add_subdirectory(${LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src EXCLUDE_FROM_ALL)
 llvm_utils_pop_build_flags()
 llvm_utils_python_restore()
+# Get version of LLVM that we are currently using:
+get_directory_property(LLVM_VERSION_MAJOR  DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION_MAJOR")
+get_directory_property(LLVM_VERSION_MINOR  DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION_MINOR")
+get_directory_property(LLVM_VERSION_PATCH  DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION_PATCH")
+get_directory_property(LLVM_VERSION_SUFFIX DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION_SUFFIX")
+# Make LLVM version accessible in parent scope:
+set(LLVM_VERSION_MAJOR  ${LLVM_VERSION_MAJOR}  PARENT_SCOPE)
+set(LLVM_VERSION_MINOR  ${LLVM_VERSION_MINOR}  PARENT_SCOPE)
+set(LLVM_VERSION_PATCH  ${LLVM_VERSION_PATCH}  PARENT_SCOPE)
+set(LLVM_VERSION_SUFFIX ${LLVM_VERSION_SUFFIX} PARENT_SCOPE)
+
+set(PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
+
+if(NOT (${PACKAGE_VERSION} EQUAL ${EXPECTED_LLVM_VERSION}))
+  message(FATAL_ERROR "Expected LLVM version ${EXPECTED_LLVM_VERSION} but found ${PACKAGE_VERSION}.")
+endif()
 
 set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
 set(LLVM_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS} PARENT_SCOPE)
