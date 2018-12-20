@@ -1,0 +1,23 @@
+diff -Naur a/lib/Transforms/Scalar/SROA.cpp b/lib/Transforms/Scalar/SROA.cpp
+--- a/lib/Transforms/Scalar/SROA.cpp	2018-08-31 17:53:05.000000000 +0200
++++ b/lib/Transforms/Scalar/SROA.cpp	2018-12-20 18:48:12.788662000 +0100
+@@ -3033,7 +3033,18 @@
+     ConstantInt *Size =
+         ConstantInt::get(cast<IntegerType>(II.getArgOperand(0)->getType()),
+                          NewEndOffset - NewBeginOffset);
+-    Value *Ptr = getNewAllocaSlicePtr(IRB, OldPtr->getType());
++    // For lifetime intrinsics it's ok to cast a pointer type of a new slice
++    // to a generic i8* pointer. There is a case when using the pointer type
++    // from whole alloca leads to an assertion in PromoteMemToReg.
++    //
++    // A patch is posted to fix this in LLVM:
++    //
++    // https://reviews.llvm.org/D55934
++    // [PATCH] D55934: Assertion in isAllocaPromotable due to extra bitcast
++    // goes into lifetime marker
++    Type *PointerTy = IRB.getInt8PtrTy(OldPtr->getType()->getPointerAddressSpace());
++    Value *Ptr = getNewAllocaSlicePtr(IRB, PointerTy);
++
+     Value *New;
+     if (II.getIntrinsicID() == Intrinsic::lifetime_start)
+       New = IRB.CreateLifetimeStart(Ptr, Size);
