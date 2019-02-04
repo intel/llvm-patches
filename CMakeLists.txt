@@ -45,7 +45,7 @@ endif()
 
 include(llvm_utils.cmake)
 
-set(LLVM_TARGETS_TO_BUILD "" CACHE STRING "desc" FORCE)
+set(LLVM_TARGETS_TO_BUILD "X86" CACHE STRING "desc" FORCE)
 set(LLVM_BUILD_TOOLS true CACHE BOOL "desc" FORCE)
 set(LLVM_INCLUDE_TOOLS true CACHE BOOL "desc" FORCE)
 set(LLVM_INSTALL_UTILS false CACHE BOOL "desc" FORCE)
