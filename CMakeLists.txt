@@ -123,6 +123,25 @@ else()
     )
 endif()
 
+if((NOT EXISTS ${LLVM_SOURCE_URL}) AND (NOT EXPECTED_LLVM_VERSION))
+    # Use LLVM sources stored at fixed location
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm_source)
+    if(EXISTS ${LLVM_SOURCE_URL})
+        message(STATUS "[LLVM_PATCHER] : Manual read LLVM version from llvm_source/CMakeLists.txt file")
+        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MAJOR_MATCH REGEX "set\\(LLVM_VERSION_MAJOR [0-9]+\\)")
+        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MINOR_MATCH REGEX "set\\(LLVM_VERSION_MINOR [0-9]+\\)")
+        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_PATCH_MATCH REGEX "set\\(LLVM_VERSION_PATCH [0-9]+\\)")
+
+        string(REGEX MATCH "[0-9]+" LLVM_VERSION_MAJOR ${LLVM_VERSION_MAJOR_MATCH})
+        string(REGEX MATCH "[0-9]+" LLVM_VERSION_MINOR ${LLVM_VERSION_MINOR_MATCH})
+        string(REGEX MATCH "[0-9]+" LLVM_VERSION_PATCH ${LLVM_VERSION_PATCH_MATCH})
+
+        set(EXPECTED_LLVM_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}")
+
+        message(STATUS "[LLVM_PATCHER] : In folder ${LLVM_SOURCE_URL} found LLVM version : ${EXPECTED_LLVM_VERSION}")
+    endif()
+endif()
+
 # Use LLVM stock sources or patched stock sources
 if(LLVM_STOCK_SOURCES)
     set(LLVM_APPLY_PATCHES false)
@@ -130,7 +149,9 @@ else()
     set(LLVM_APPLY_PATCHES true)
 endif()
 
-set(EXPECTED_LLVM_VERSION "7.0.0")
+if(NOT EXPECTED_LLVM_VERSION)
+    set(EXPECTED_LLVM_VERSION "7.0.0")
+endif()
 
 if(NOT LLVM_SOURCE_DIR)
     set(LLVM_SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/../src")
@@ -149,18 +170,35 @@ if(NOT EXISTS ${LLVM_SOURCE_URL})
     set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm${EXPECTED_LLVM_VERSION}_source)
 endif()
 
-message(STATUS "LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
-message(STATUS "LLVM_OPTIONS      = ${LLVM_OPTIONS}")
+message(STATUS "[LLVM_PATCHER] : LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
+message(STATUS "[LLVM_PATCHER] : LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 
 if(NOT EXISTS ${LLVM_SOURCE_DIR})
       # Copy stock LLVM sources to LLVM_SOURCE_DIR
-      message(STATUS "Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
+      message(STATUS "[LLVM_PATCHER] : Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
       execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
+
+    FILE(GLOB dirsPatch RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/releases ${CMAKE_CURRENT_SOURCE_DIR}/releases/*)
+    list(SORT dirsPatch)
+    list(REVERSE dirsPatch)
+    
+    if(NOT LLVM_VERSION_MAJOR)
+        string(REGEX MATCH "[0-9]+" LLVM_VERSION_MAJOR ${EXPECTED_LLVM_VERSION})
+    endif()
 
       if(LLVM_APPLY_PATCHES)
           # Customization patches will be applied if present.
+          
+       foreach(dirPatch ${dirsPatch})
+         #Apply all patches for given major version of LLVM
+         string(REGEX MATCH "[0-9]+" LLVM_VER_MAJOR_FOLDER ${dirPatch})
+         if(NOT ${LLVM_VERSION_MAJOR} MATCHES ${LLVM_VER_MAJOR_FOLDER})
+           continue()
+         endif()
+         message(STATUS "[LLVM_PATCHER] : Applying patches for LLVM from version ${dirPatch}")
+                  
           file(GLOB LLVM_PATCH_FILES
-               "${CMAKE_CURRENT_SOURCE_DIR}/releases/${EXPECTED_LLVM_VERSION}/patches_external/*.patch"
+               "${CMAKE_CURRENT_SOURCE_DIR}/releases/${dirPatch}/patches_external/*.patch"
               )
           # Sort list of patch files.
           if(LLVM_PATCH_FILES)
@@ -168,22 +206,23 @@ if(NOT EXISTS ${LLVM_SOURCE_DIR})
           endif()
           # Apply customization patches if any.
           foreach(patch_file ${LLVM_PATCH_FILES})
-              message("Apply ${patch_file} file")
+              message(STATUS "[LLVM_PATCHER] : Apply ${patch_file} file")
               execute_process(COMMAND ${PATCH} -d ${LLVM_SOURCE_DIR} -p1 -i ${patch_file} RESULT_VARIABLE rv)
               if(NOT rv EQUAL 0)
-                  message(FATAL_ERROR "error: applying patch '${patch_file}' failed")
+                  message(FATAL_ERROR "[LLVM_PATCHER] : error: applying patch '${patch_file}' failed")
               endif()
           endforeach()
+         endforeach()
       endif()
 endif()
 
 if(CMAKE_CONFIGURATION_TYPES)
     # Multi-configuration generator.
     set (CMAKE_CONFIGURATION_TYPES "Debug" "Release" "ReleaseInternal")
-    message(STATUS "LLVM_CONFIGURATION_TYPES = ${CMAKE_CONFIGURATION_TYPES}")
+    message(STATUS "[LLVM_PATCHER] : LLVM_CONFIGURATION_TYPES = ${CMAKE_CONFIGURATION_TYPES}")
 else()
     # Single-configuration generator.
-    message(STATUS "LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
+    message(STATUS "[LLVM_PATCHER] : LLVM_BUILD_TYPE   = ${CMAKE_BUILD_TYPE}")
 endif()
 
 # Set python interpreter for LLVM 
@@ -207,7 +246,7 @@ set(LLVM_VERSION_SUFFIX ${LLVM_VERSION_SUFFIX} PARENT_SCOPE)
 set(PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
 
 if(NOT (${PACKAGE_VERSION} EQUAL ${EXPECTED_LLVM_VERSION}))
-  message(FATAL_ERROR "Expected LLVM version ${EXPECTED_LLVM_VERSION} but found ${PACKAGE_VERSION}.")
+  message(FATAL_ERROR "[LLVM_PATCHER] : Expected LLVM version ${EXPECTED_LLVM_VERSION} but found ${PACKAGE_VERSION}.")
 endif()
 
 set(LLVM_INCLUDE_DIRS "${LLVM_SOURCE_DIR}/include;${CMAKE_CURRENT_BINARY_DIR}/src/include")
