@@ -1,0 +1,9 @@
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -27,5 +27,4 @@ add_subdirectory(Passes)
+ add_subdirectory(TextAPI)
+ add_subdirectory(ToolDrivers)
+ add_subdirectory(XRay)
+-add_subdirectory(Testing)
+ add_subdirectory(WindowsManifest)
