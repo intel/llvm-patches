@@ -24,23 +24,35 @@
 # 
 # ======================= end_copyright_notice ==================================
 
-set(LLVM_USE_PREBUILT true)
+set(LLVM_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 
-if(NOT LLVM_PREBUILT_PATH)
-    set(LLVM_PREBUILT_PATH "${CMAKE_CURRENT_BINARY_DIR}/src")
+if(DEFINED BUILD_TYPE)
+  if(${BUILD_TYPE} STREQUAL "release")
+    set(LLVM_BUILD_TYPE "Release")
+  else()
+    set(LLVM_BUILD_TYPE "Debug")
+  endif()
 endif()
-find_path (LLVM_DIR LLVM-Config.cmake
-    ${LLVM_PREBUILT_PATH}/lib/cmake/llvm
-)
-if(NOT LLVM_DIR)
-    message(FATAL_ERROR "LLVM prebuilt not found at: ${LLVM_PREBUILT_PATH}/lib/cmake/llvm")
-endif()
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "[LLVM Prebuilt] Found LLVM ${LLVM_PACKAGE_VERSION} in ${LLVM_DIR}")
-message(STATUS "[LLVM Prebuilt] Using LLVM includes from: ${LLVM_INCLUDE_DIRS}")
-message(STATUS "[LLVM Prebuilt] Using LLVM libraries from: ${LLVM_LIBRARY_DIR}")
-unset(LLVM_DIR CACHE)
 
-#set(LLVM_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS} PARENT_SCOPE)
-#set(LLVM_LIBRARY_DIR ${LLVM_LIBRARY_DIR} PARENT_SCOPE)
-#set(LLVM_DEFINITIONS ${LLVM_DEFINITIONS} PARENT_SCOPE)
+if(NOT DEFINED LLVM_BUILD_PREBUILDS_DIR)
+  if(NOT EXISTS ${LLVM_BUILD_PREBUILDS_DIR})
+    set(LLVM_BUILD_PREBUILDS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../prebuild-llvm/${LLVM_BUILD_TYPE}")
+  endif()
+endif()
+
+
+if(EXISTS ${LLVM_BUILD_PREBUILDS_DIR}/include)
+  list(APPEND CMAKE_MODULE_PATH "${LLVM_BUILD_PREBUILDS_DIR}/lib/cmake/llvm/")
+   
+  set(LLVM_DIR ${LLVM_BUILD_PREBUILDS_DIR}/lib/cmake/llvm)  
+  include(${LLVM_BUILD_PREBUILDS_DIR}/lib/cmake/llvm/LLVMConfig.cmake)
+  include(${LLVM_BUILD_PREBUILDS_DIR}/lib/cmake/llvm/AddLLVM.cmake)
+  
+  find_package(LLVM REQUIRED CONFIG)
+  
+  set(LLVM_INCLUDE_DIRS "${LLVM_BUILD_PREBUILDS_DIR}/include")
+  
+  set(LLVM_USE_PREBUILT true)
+  
+  message(STATUS "[LLVM_PATCHER\\Prebuilt] : Found prebuilt of llvm in version ${PACKAGE_VERSION}")
+endif()
