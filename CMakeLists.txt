@@ -43,6 +43,7 @@ else()
     endif()
 endif()
 
+
 include(llvm_utils.cmake)
 
 set(LLVM_TARGETS_TO_BUILD "X86" CACHE STRING "desc" FORCE)
@@ -146,10 +147,10 @@ endif()
 if(((NOT EXISTS ${LLVM_SOURCE_URL}) AND (NOT EXPECTED_LLVM_VERSION)) OR DEFINED BUILD_PACKAGE)
      # Use LLVM sources stored at fixed location
     if(NOT DEFINED BUILD_PACKAGE)
-      set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm_source)
+      set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project/llvm)
     endif()
     if(EXISTS ${LLVM_SOURCE_URL})
-        message(STATUS "[LLVM_PATCHER] : Manual read LLVM version from llvm_source/CMakeLists.txt file")
+        message(STATUS "[LLVM_PATCHER] : Manual read LLVM version from llvm-project/llvm/CMakeLists.txt file")
         file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MAJOR_MATCH REGEX "set\\(LLVM_VERSION_MAJOR [0-9]+\\)")
         file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MINOR_MATCH REGEX "set\\(LLVM_VERSION_MINOR [0-9]+\\)")
         file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_PATCH_MATCH REGEX "set\\(LLVM_VERSION_PATCH [0-9]+\\)")
@@ -181,15 +182,15 @@ endif()
 
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL /opt/src/llvm${EXPECTED_LLVM_VERSION}_source)
+    set(LLVM_SOURCE_URL /opt/src/llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
 endif()
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm${EXPECTED_LLVM_VERSION}_source)
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
 endif()
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm${EXPECTED_LLVM_VERSION}_source)
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
 endif()
 
 message(STATUS "[LLVM_PATCHER] : LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
