@@ -331,7 +331,29 @@ if(BUILD_PACKAGE)
     include(GNUInstallDirs)
 
     install(FILES $<TARGET_SONAME_FILE:LLVM> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
-    install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT intel-llvm-patched-library-devel)
+    
+    install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
+    COMPONENT intel-llvm-patched-library-devel
+    FILES_MATCHING
+    PATTERN "*.def"
+    PATTERN "*.h"
+    PATTERN "*.td"
+    PATTERN "*.inc"
+    PATTERN "LICENSE.TXT"
+    PATTERN ".svn" EXCLUDE)
 
+    set(LLVM_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/src/include)
+
+    install(DIRECTORY ${LLVM_INCLUDE_DIR}/llvm ${LLVM_INCLUDE_DIR}/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
+    COMPONENT intel-llvm-patched-library-devel
+    FILES_MATCHING
+    PATTERN "*.def"
+    PATTERN "*.h"
+    PATTERN "*.gen"
+    PATTERN "*.inc"
+    PATTERN "CMakeFiles" EXCLUDE
+    PATTERN "config.h" EXCLUDE
+    PATTERN ".svn" EXCLUDE)
+    
   endif()
 endif()
