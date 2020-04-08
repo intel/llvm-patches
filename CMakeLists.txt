@@ -330,11 +330,9 @@ if(BUILD_PACKAGE)
     include(CPack)
     include(GNUInstallDirs)
 
-    #install(FILES $<TARGET_SONAME_FILE:LLVM> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
+    install(FILES $<TARGET_SONAME_FILE:LLVM> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
 
-    install(DIRECTORY ${LLVM_SOURCE_DIR}/../build/src/lib DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
-
-    install(DIRECTORY ${LLVM_SOURCE_DIR}/../build/src/cmake DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
+    install(DIRECTORY ${LLVM_SOURCE_DIR}/../build/src/cmake/modules DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
     
     install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
     COMPONENT intel-llvm-patched-library-devel
