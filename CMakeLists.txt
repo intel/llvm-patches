@@ -334,17 +334,8 @@ if(BUILD_PACKAGE)
 
     set(BUILD_SRC_DIR_LLVM ${LLVM_SOURCE_DIR}/../build/src)
 
-    install(FILES
-    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/LLVMConfig.cmake
-    ${BUILD_SRC_DIR_LLVM}/lib/cmake/llvm/LLVMConfigVersion.cmake
-    ${LLVM_SOURCE_DIR}/cmake/modules/LLVM-Config.cmake
-    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports.cmake
-    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
-    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
-    COMPONENT intel-llvm-patched-library)
-
     install(DIRECTORY ${BUILD_SRC_DIR_LLVM}/lib/cmake/llvm
-    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake
     COMPONENT intel-llvm-patched-library
     FILES_MATCHING PATTERN *.cmake
     PATTERN .svn EXCLUDE
@@ -353,6 +344,22 @@ if(BUILD_PACKAGE)
     PATTERN LLVM-Config.cmake EXCLUDE
     PATTERN LLVMExports.cmake EXCLUDE
     PATTERN GetHostTriple.cmake EXCLUDE)
+
+    install(FILES
+    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/LLVMConfig.cmake
+    ${BUILD_SRC_DIR_LLVM}/lib/cmake/llvm/LLVMConfigVersion.cmake
+    ${LLVM_SOURCE_DIR}/cmake/modules/LLVM-Config.cmake
+    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports.cmake
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
+    COMPONENT intel-llvm-patched-library)
+
+    if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+      install(FILES
+      ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
+      DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
+      COMPONENT intel-llvm-patched-library)
+    endif()
+
     
     install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
     COMPONENT intel-llvm-patched-library-devel
