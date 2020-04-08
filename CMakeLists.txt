@@ -335,15 +335,15 @@ if(BUILD_PACKAGE)
     set(BUILD_SRC_DIR_LLVM ${LLVM_SOURCE_DIR}/../build/src)
 
     install(FILES
-    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/LLVMConfig.cmake
-    ${BUILD_SRC_DIR_LLVM}/src/lib/cmake/llvm/LLVMConfigVersion.cmake
+    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/LLVMConfig.cmake
+    ${BUILD_SRC_DIR_LLVM}/lib/cmake/llvm/LLVMConfigVersion.cmake
     ${LLVM_SOURCE_DIR}/cmake/modules/LLVM-Config.cmake
-    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports.cmake
-    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
+    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports.cmake
+    ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
     COMPONENT intel-llvm-patched-library)
 
-    install(DIRECTORY ${BUILD_SRC_DIR_LLVM}/src/lib/cmake/llvm
+    install(DIRECTORY ${BUILD_SRC_DIR_LLVM}/lib/cmake/llvm
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
     COMPONENT intel-llvm-patched-library
     FILES_MATCHING PATTERN *.cmake
