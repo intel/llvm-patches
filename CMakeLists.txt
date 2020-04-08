@@ -332,7 +332,27 @@ if(BUILD_PACKAGE)
 
     install(FILES $<TARGET_SONAME_FILE:LLVM> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
 
-    install(DIRECTORY ${LLVM_SOURCE_DIR}/../build/src/cmake/modules DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT intel-llvm-patched-library)
+    set(BUILD_SRC_DIR_LLVM ${LLVM_SOURCE_DIR}/../build/src)
+
+    install(FILES
+    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/LLVMConfig.cmake
+    ${BUILD_SRC_DIR_LLVM}/src/lib/cmake/llvm/LLVMConfigVersion.cmake
+    ${LLVM_SOURCE_DIR}/cmake/modules/LLVM-Config.cmake
+    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports.cmake
+    ${BUILD_SRC_DIR_LLVM}/src/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
+    COMPONENT intel-llvm-patched-library)
+
+    install(DIRECTORY ${BUILD_SRC_DIR_LLVM}/src/lib/cmake/llvm
+    DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
+    COMPONENT intel-llvm-patched-library
+    FILES_MATCHING PATTERN *.cmake
+    PATTERN .svn EXCLUDE
+    PATTERN LLVMConfig.cmake EXCLUDE
+    PATTERN LLVMConfigVersion.cmake EXCLUDE
+    PATTERN LLVM-Config.cmake EXCLUDE
+    PATTERN LLVMExports.cmake EXCLUDE
+    PATTERN GetHostTriple.cmake EXCLUDE)
     
     install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
     COMPONENT intel-llvm-patched-library-devel
