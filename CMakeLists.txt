@@ -356,13 +356,10 @@ if(BUILD_PACKAGE)
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
     COMPONENT intel-llvm-patched-library)
 
-    if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-      install(FILES
-      ${BUILD_SRC_DIR_LLVM}/cmake/modules/CMakeFiles/Export/lib/cmake/llvm/LLVMExports-release.cmake
-      DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
-      COMPONENT intel-llvm-patched-library)
-    endif()
-
+    install(TARGETS llvm-link llvm-config llvm-tablgen not FileCheck count
+    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+    COMPONENT intel-llvm-patched-library
+    )
     
     install(DIRECTORY ${LLVM_SOURCE_DIR}/include/llvm ${LLVM_SOURCE_DIR}/include/llvm-c DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} 
     COMPONENT intel-llvm-patched-library-devel
