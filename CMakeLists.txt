@@ -356,7 +356,7 @@ if(BUILD_PACKAGE)
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
     COMPONENT intel-llvm-patched-library)
 
-    install(TARGETS llvm-link llvm-config llvm-tablgen not FileCheck count
+    install(TARGETS llvm-link llvm-config llvm-tblgen not FileCheck count
     RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
     COMPONENT intel-llvm-patched-library
     )
