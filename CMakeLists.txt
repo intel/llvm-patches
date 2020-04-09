@@ -356,13 +356,14 @@ if(BUILD_PACKAGE)
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/llvm
     COMPONENT intel-llvm-patched-library)
 
+    set(BIN_PATH ${BUILD_SRC_DIR_LLVM}/bin)
     install(FILES
-    $<TARGET_FILE_NAME:llvm-link>
-    $<TARGET_FILE_NAME:llvm-config>
-    $<TARGET_FILE_NAME:llvm-tblgen>
-    $<TARGET_FILE_NAME:not>
-    $<TARGET_FILE_NAME:FileCheck>
-    $<TARGET_FILE_NAME:count>
+    ${BIN_PATH}/llvm-link
+    ${BIN_PATH}/llvm-config
+    ${BIN_PATH}/llvm-tblgen
+    ${BIN_PATH}/not
+    ${BIN_PATH}/FileCheck
+    ${BIN_PATH}/count
     DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
     COMPONENT intel-llvm-patched-library
     )
