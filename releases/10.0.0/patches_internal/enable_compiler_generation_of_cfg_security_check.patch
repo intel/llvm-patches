@@ -1,0 +1,18 @@
+diff --git a/cmake/modules/AddLLVM.cmake b/cmake/modules/AddLLVM.cmake
+index 1a417447278..ec7f4c44a12 100644
+--- a/cmake/modules/AddLLVM.cmake
++++ b/cmake/modules/AddLLVM.cmake
+@@ -8,6 +8,13 @@ function(llvm_update_compile_flags name)
+     set(update_src_props ON)
+   endif()
+ 
++  if(MSVC)
++    # Enable compiler generation of Control Flow Guard security checks.
++    target_compile_options(${name} PUBLIC "/guard:cf")
++    set_property(TARGET ${name} APPEND_STRING PROPERTY
++        LINK_FLAGS "/DYNAMICBASE /GUARD:CF")
++  endif()
++
+   # LLVM_REQUIRES_EH is an internal flag that individual targets can use to
+   # force EH
+   if(LLVM_REQUIRES_EH OR LLVM_ENABLE_EH)

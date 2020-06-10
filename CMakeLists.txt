@@ -226,6 +226,14 @@ if(NOT EXISTS ${LLVM_SOURCE_DIR})
           file(GLOB LLVM_PATCH_FILES
                "${CMAKE_CURRENT_SOURCE_DIR}/releases/${dirPatch}/patches_external/*.patch"
               )
+
+          if(LLVM_VERSION_MAJOR EQUAL 10)
+          file(GLOB LLVM_PATCH_FILES_INTERNAL
+               "${CMAKE_CURRENT_SOURCE_DIR}/releases/${dirPatch}/patches_internal/*.patch"
+              )
+          set(LLVM_PATCH_FILES ${LLVM_PATCH_FILES} ${LLVM_PATCH_FILES_INTERNAL})
+          endif()
+          
           # Sort list of patch files.
           if(LLVM_PATCH_FILES)
               list(SORT LLVM_PATCH_FILES)

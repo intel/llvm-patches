@@ -1,0 +1,23 @@
+#    Description                  : Configure file race fix
+#    When Fixed in Open Source    : Needed always
+diff -Naur --strip-trailing-cr a/utils/llvm-build/llvmbuild/main.py b/utils/llvm-build/llvmbuild/main.py
+--- a/utils/llvm-build/llvmbuild/main.py	2016-02-08 08:41:14.000000000 -0700
++++ b/utils/llvm-build/llvmbuild/main.py	2018-11-16 08:35:21.030615300 -0700
+@@ -586,11 +586,14 @@ subdirectories = %s
+ # FIXME: File a CMake RFE to get a properly supported version of this
+ # feature.
+ """)
++        f.write("""file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/DummyConfigureOutput)\n""")
++        import hashlib
++
+         for dep in dependencies:
+             f.write("""\
+ configure_file(\"%s\"
+-               ${CMAKE_CURRENT_BINARY_DIR}/DummyConfigureOutput)\n""" % (
+-                cmake_quote_path(dep),))
++               ${CMAKE_CURRENT_BINARY_DIR}/DummyConfigureOutput/%s)\n""" % (
++                cmake_quote_path(dep),hashlib.sha1(dep).hexdigest()))
+
+         # Write the properties we use to encode the required library dependency
+         # information in a form CMake can easily use directly.
+
