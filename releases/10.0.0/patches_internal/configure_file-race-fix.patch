@@ -16,7 +16,7 @@ diff -Naur --strip-trailing-cr a/utils/llvm-build/llvmbuild/main.py b/utils/llvm
 -               ${CMAKE_CURRENT_BINARY_DIR}/DummyConfigureOutput)\n""" % (
 -                cmake_quote_path(dep),))
 +               ${CMAKE_CURRENT_BINARY_DIR}/DummyConfigureOutput/%s)\n""" % (
-+                cmake_quote_path(dep),hashlib.sha1(dep).hexdigest()))
++                cmake_quote_path(dep),hashlib.sha1(dep.encode('utf-8')).hexdigest()))
 
          # Write the properties we use to encode the required library dependency
          # information in a form CMake can easily use directly.
