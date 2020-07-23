@@ -1,0 +1,57 @@
+From d4857318e0ce04c10ffd10f42f10550bc06c09db Mon Sep 17 00:00:00 2001
+From: Anton Zabaznov <anton.zabaznov@intel.com>
+Date: Thu, 23 Jul 2020 10:02:45 +0300
+Subject: [PATCH] backport from upstream to fix issue with windows compilation
+
+See:
+1. PR41367 (https://bugs.llvm.org/show_bug.cgi?id=41367)
+2. https://github.com/llvm/llvm-project/commit/c06a470fc84352642e670a0159bb4846f5aa2a3c#diff-a24105042657fab99820d2763969217c
+3. https://github.com/llvm/llvm-project/commit/46e5c5fe778b92b2a7e2c2ad3610e1da6794bd5e#diff-a24105042657fab99820d2763969217c
+---
+ llvm/include/llvm/Support/ManagedStatic.h | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/llvm/include/llvm/Support/ManagedStatic.h b/llvm/include/llvm/Support/ManagedStatic.h
+index b4bf3210cc7..8ea116b8355 100644
+--- a/llvm/include/llvm/Support/ManagedStatic.h
++++ b/llvm/include/llvm/Support/ManagedStatic.h
+@@ -17,6 +17,10 @@
+ #include <atomic>
+ #include <cstddef>
+ 
++#if !defined(_MSC_VER) || (_MSC_VER >= 1925) || defined(__clang__)
++#define LLVM_USE_CONSTEXPR_CTOR
++#endif
++
+ namespace llvm {
+ 
+ /// object_creator - Helper method for ManagedStatic.
+@@ -36,15 +40,24 @@ template <typename T, size_t N> struct object_deleter<T[N]> {
+ /// ManagedStaticBase - Common base class for ManagedStatic instances.
+ class ManagedStaticBase {
+ protected:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  mutable std::atomic<void *> Ptr{};
++  mutable void (*DeleterFn)(void *) = nullptr;
++  mutable const ManagedStaticBase *Next = nullptr;
++#else
+   // This should only be used as a static variable, which guarantees that this
+   // will be zero initialized.
+   mutable std::atomic<void *> Ptr;
+   mutable void (*DeleterFn)(void*);
+   mutable const ManagedStaticBase *Next;
+-
++#endif
+   void RegisterManagedStatic(void *(*creator)(), void (*deleter)(void*)) const;
+ 
+ public:
++#ifdef LLVM_USE_CONSTEXPR_CTOR
++  constexpr ManagedStaticBase() = default;
++#endif
++
+   /// isConstructed - Return true if this object has not been created yet.
+   bool isConstructed() const { return Ptr != nullptr; }
+ 
+-- 
+2.17.1
+
