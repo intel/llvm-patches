@@ -68,6 +68,7 @@ set(LLVM_ENABLE_TERMINFO false CACHE BOOL "desc" FORCE)
 set(LLVM_ENABLE_DUMP true CACHE BOOL "desc" FORCE)
 set(LLVM_BUILD_LLVM_DYLIB false CACHE BOOL "desc" FORCE)
 set(LLVM_LINK_LLVM_DYLIB false CACHE BOOL "desc" FORCE)
+set(LLVM_ENABLE_PROJECTS "clang" CACHE STRING "desc" FORCE)
 
 if(DEFINED BUILD_PACKAGE)
   if(NOT WIN32)
@@ -103,6 +104,7 @@ set(LLVM_OPTIONS
     "-DLLVM_ENABLE_DUMP=${LLVM_ENABLE_DUMP}"
     "-DLLVM_BUILD_LLVM_DYLIB=${LLVM_BUILD_LLVM_DYLIB}"
     "-DLLVM_LINK_LLVM_DYLIB=${LLVM_LINK_LLVM_DYLIB}"
+    "-DLLVM_ENABLE_PROJECTS=${LLVM_ENABLE_PROJECTS}"
 )
 
 if(_ASSERTBUILD)
@@ -149,13 +151,13 @@ endif()
 if(((NOT EXISTS ${LLVM_SOURCE_URL}) AND (NOT EXPECTED_LLVM_VERSION)) OR DEFINED BUILD_PACKAGE)
      # Use LLVM sources stored at fixed location
     if(NOT DEFINED BUILD_PACKAGE)
-      set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project/llvm)
+      set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project)
     endif()
     if(EXISTS ${LLVM_SOURCE_URL})
         message(STATUS "[LLVM_PATCHER] : Manual read LLVM version from llvm-project/llvm/CMakeLists.txt file")
-        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MAJOR_MATCH REGEX "set\\(LLVM_VERSION_MAJOR [0-9]+\\)")
-        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_MINOR_MATCH REGEX "set\\(LLVM_VERSION_MINOR [0-9]+\\)")
-        file(STRINGS ${LLVM_SOURCE_URL}/CMakeLists.txt LLVM_VERSION_PATCH_MATCH REGEX "set\\(LLVM_VERSION_PATCH [0-9]+\\)")
+        file(STRINGS ${LLVM_SOURCE_URL}/llvm/CMakeLists.txt LLVM_VERSION_MAJOR_MATCH REGEX "set\\(LLVM_VERSION_MAJOR [0-9]+\\)")
+        file(STRINGS ${LLVM_SOURCE_URL}/llvm/CMakeLists.txt LLVM_VERSION_MINOR_MATCH REGEX "set\\(LLVM_VERSION_MINOR [0-9]+\\)")
+        file(STRINGS ${LLVM_SOURCE_URL}/llvm/CMakeLists.txt LLVM_VERSION_PATCH_MATCH REGEX "set\\(LLVM_VERSION_PATCH [0-9]+\\)")
 
         string(REGEX MATCH "[0-9]+" LLVM_VERSION_MAJOR ${LLVM_VERSION_MAJOR_MATCH})
         string(REGEX MATCH "[0-9]+" LLVM_VERSION_MINOR ${LLVM_VERSION_MINOR_MATCH})
@@ -175,7 +177,7 @@ else()
 endif()
 
 if(NOT EXPECTED_LLVM_VERSION)
-    set(EXPECTED_LLVM_VERSION "7.0.0")
+    set(EXPECTED_LLVM_VERSION "10.0.0")
 endif()
 
 if(NOT LLVM_SOURCE_DIR)
@@ -184,24 +186,26 @@ endif()
 
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL /opt/src/llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
+    set(LLVM_SOURCE_URL /opt/src/llvm-project_${EXPECTED_LLVM_VERSION})
 endif()
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../llvm-project_${EXPECTED_LLVM_VERSION})
 endif()
 if(NOT EXISTS ${LLVM_SOURCE_URL})
     # Use LLVM sources stored at fixed location
-    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${EXPECTED_LLVM_VERSION}/llvm)
+    set(LLVM_SOURCE_URL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${EXPECTED_LLVM_VERSION})
 endif()
 
 message(STATUS "[LLVM_PATCHER] : LLVM_SOURCE_URL   = ${LLVM_SOURCE_URL}")
 message(STATUS "[LLVM_PATCHER] : LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 
 if(NOT EXISTS ${LLVM_SOURCE_DIR})
-      # Copy stock LLVM sources to LLVM_SOURCE_DIR
-      message(STATUS "[LLVM_PATCHER] : Copying stock LLVM sources to ${LLVM_SOURCE_DIR}")
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL} ${LLVM_SOURCE_DIR})
+    # Copy stock LLVM sources to LLVM_SOURCE_DIR
+    message(STATUS "[LLVM_PATCHER] : Copying stock LLVM and CLANG sources ${LLVM_SOURCE_URL} to ${LLVM_SOURCE_DIR}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL}/.git ${LLVM_SOURCE_DIR}/../.git)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL}/clang ${LLVM_SOURCE_DIR}/../clang)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${LLVM_SOURCE_URL}/llvm ${LLVM_SOURCE_DIR})
 
     FILE(GLOB dirsPatch RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/releases ${CMAKE_CURRENT_SOURCE_DIR}/releases/*)
     list(SORT dirsPatch)
