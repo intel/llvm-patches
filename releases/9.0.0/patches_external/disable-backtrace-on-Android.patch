@@ -1,0 +1,33 @@
+From c5b8f0f6cf83145bd0b35dc02ec577efe1f803d4 Mon Sep 17 00:00:00 2001
+From: "Lu,Yang A" <yang.a.lu@intel.com>
+Date: Fri, 13 Nov 2020 16:15:04 +0800
+Subject: [PATCH] disable backtrace on Android
+
+The backtrace uses execinfo.h which is not workable
+for Android bionic compiling, so disable it on Android.
+
+Change-Id: Ic57084906e9d836c6f2ca4fb0dbb7a1fb3d18b96
+Signed-off-by: Lu,Yang A <yang.a.lu@intel.com>
+---
+ llvm/include/llvm/Config/config.h.cmake | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/llvm/include/llvm/Config/config.h.cmake b/llvm/include/llvm/Config/config.h.cmake
+index 1a38bc15ab9..115a88be265 100644
+--- a/llvm/include/llvm/Config/config.h.cmake
++++ b/llvm/include/llvm/Config/config.h.cmake
+@@ -17,9 +17,10 @@
+ #cmakedefine01 LLVM_ENABLE_CRASH_DUMPS
+ 
+ /* Define to 1 if you have the `backtrace' function. */
++#if defined(__linux__) && !defined( __ANDROID__)
+ #cmakedefine HAVE_BACKTRACE ${HAVE_BACKTRACE}
+-
+ #define BACKTRACE_HEADER <${BACKTRACE_HEADER}>
++#endif
+ 
+ /* Define to 1 if you have the <CrashReporterClient.h> header file. */
+ #cmakedefine HAVE_CRASHREPORTERCLIENT_H
+-- 
+2.17.1
+
